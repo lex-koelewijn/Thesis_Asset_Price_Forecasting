@@ -55,6 +55,12 @@ mev['Date'] = pd.to_datetime(mev['Date'], format='%Y%m') #convert date pandas fo
 mev = mev.set_index('Date') #Set date as index. 
 mev = mev.loc[(mev.index >= '1950-12-01')]
 
+ta = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Technical indicators', 
+                    skiprows= range(1118,1119,1))[:-1]
+ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
+ta = ta.set_index('Date')
+ta = ta.loc[(ta.index >= '1950-12-01')]
+
 # ### Data restructuring
 # We must create rolling windows of the Macro Economic Variables (MEV) and match them with the 1 month out of sample equity premium in order train a model. 
 
@@ -119,12 +125,11 @@ print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
 # -
 
 # ## WIP Notes
-# * The date is included in the rolling window, that cannot be correct
-# * The y_mev is useless, need to match it up with the relevant EP. 
 # * What type of OLS regression should I run? Based on MEV and TA seperately I suppose? Perhaps read rapach 
+# * Right now I have contatenated all MEV into one big regression, I'm fairly sure I should do each regression seperately per variable.
 
 
 
-
+mev
 
 
