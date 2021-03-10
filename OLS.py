@@ -25,14 +25,31 @@ from tqdm.notebook import tqdm
 pd.set_option('display.max_columns', None)
 
 
-def createRollingWindow(dataset, look_back=1):
-    X= pd.DataFrame(np.empty((dataset.shape[0]-look_back, dataset.shape[1]*look_back)))
-    for i in tqdm(range(dataset.shape[0]-look_back)):    
-        X.iloc[i] = dataset.iloc[i:(i+look_back):].to_numpy().flatten()
+def createRollingWindow(dataset, look_back = 1):
+    """
+    Function takes a 2 dimensional array as input and outputs a 2 dimensional array containing rolling windows of the matrix of size [No_Obs - look_back, look_back * No_Vars].
+    It creates rolling windows through concatenating all variables at time t with all variables at time t+1 etc until you you have reached t+look_back and move to next window. 
+    """
+    X= pd.DataFrame(np.empty((dataset.shape[0] - look_back, dataset.shape[1] * look_back)))
+    for i in tqdm(range(dataset.shape[0] - look_back)):    
+        X.iloc[i] = dataset.iloc[i:(i + look_back):].to_numpy().flatten()
+    return X
+
+
+def createRollingWindow1D(dataset, look_back = 1):
+    """
+    Function takes a 1 dimensional array as input and outputs a 2 dimensional array containing rolling windows of the series of size look_back.
+    """
+    X= pd.DataFrame(np.empty((dataset.shape[0] - look_back, look_back)))
+    for i in tqdm(range(dataset.shape[0] - look_back)):    
+        X.iloc[i] = dataset.iloc[i:(i + look_back):].to_numpy().flatten()
     return X
 
 
 def shift_data(steps, X, y):
+    """
+    Function takes a 2D X matrix and 1d y series and shifts them with steps and resizes them such that there are no empty lines. 
+    """
     X = X[:X.shape[0]-steps]
     y = y.shift(periods=-steps)[:y.shape[0]-steps].reset_index(drop=True)
     return X,y
@@ -130,6 +147,12 @@ print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
 
 
 
-mev
+
+
+
+
+
+
+
 
 
