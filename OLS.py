@@ -20,6 +20,7 @@ import numpy as np
 import sklearn
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from tqdm.notebook import tqdm
 
 pd.set_option('display.max_columns', None)
@@ -158,7 +159,7 @@ y_pred = reg.predict(X_test)
 print('Coefficients: ', coefficients)
 print('Intercept: ', intercept)
 
-from sklearn import metrics
+
 print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
 print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))
 print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
@@ -187,24 +188,19 @@ for variable in mev.columns:
     rollingWindowsMEV[variable] = createRollingWindow1D(mev[variable], 12)
 
 # +
-df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2', 'MAE', 'MSE', 'RMSE'])
 
 for variable in mev.columns:
     X_train, X_test, y_train, y_test = train_test_split(rollingWindowsMEV[variable], y, train_size=168, random_state=0, shuffle=False)
     reg = LinearRegression().fit(X_train, y_train)
-    
+    y_pred = reg.predict(X_test)
     df = df.append(pd.Series({'Variable' : variable, 
                               'Coef' : reg.coef_[0], 
                               'Intercept' : reg.intercept_, 
-                              'R2':  reg.score(X_train, y_train)}), ignore_index=True)
-    
-    y_pred = reg.predict(X_test)
-#     print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
-#     print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))
-#     print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
-#     print('R2:', metrics.r2_score(y_test, y_pred))
-#     print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
-#     print('\n')
+                              'R2':  reg.score(X_train, y_train),
+                              'MAE': metrics.mean_absolute_error(y_test, y_pred),
+                              'MSE': metrics.mean_squared_error(y_test, y_pred), 
+                              'RMSE': np.sqrt(metrics.mean_squared_error(y_test, y_pred))}), ignore_index=True)
 # -
 
 df
@@ -218,18 +214,19 @@ for variable in ta.columns:
     rollingWindowsTA[variable] = createRollingWindow1D(ta[variable], 12)
 
 # +
-df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2', 'MAE', 'MSE', 'RMSE'])
 
 for variable in ta.columns:
     X_train, X_test, y_train, y_test = train_test_split(rollingWindowsTA[variable], y, train_size=168, random_state=0, shuffle=False)
     reg = LinearRegression().fit(X_train, y_train)
-    
+    y_pred = reg.predict(X_test)    
     df = df.append(pd.Series({'Variable' : variable, 
                               'Coef' : reg.coef_[0], 
                               'Intercept' : reg.intercept_, 
-                              'R2':  reg.score(X_train, y_train)}), ignore_index=True)
-    
-    y_pred = reg.predict(X_test)
+                              'R2':  reg.score(X_train, y_train),
+                              'MAE': metrics.mean_absolute_error(y_test, y_pred),
+                              'MSE': metrics.mean_squared_error(y_test, y_pred), 
+                              'RMSE': np.sqrt(metrics.mean_squared_error(y_test, y_pred))}), ignore_index=True)
 # -
 
 df
