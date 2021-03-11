@@ -78,6 +78,57 @@ ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
 ta = ta.set_index('Date')
 ta = ta.loc[(ta.index >= '1950-12-01')]
 
+# # Comparisson to Rapach
+# I start by recreating the analysis as done in the Neely, Rapach, Tu and Zhou (2014) paper as a starting reference point. Seeing as the results do line up with those presented in the paper, we can confirm that the dataset is the same and all is in order. 
+#
+# It is the exact in-sample predicitve regression as run in the Rapach paper of which the results can be found in table 2. It is the following bi-variate regression which is run on the data from 1951:01 - 2011:12\:  
+# $$ r_{t+1} = \alpha_i +\beta_i q_{i,t} + \epsilon_{i,t+1}$$
+#
+# First I recreate the MEV regression followed by the TA regressions to make sure the results line up. 
+#
+# ### MEV
+
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-1)[:ep.loc[(ep.index <= '2011-12-01')].shape[0]-1].reset_index(drop=True)
+
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
+
+# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
+X = mev[:mev.loc[(mev.index <= '2011-12-01')].shape[0]-1]
+
+# +
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+for variable in mev.columns:
+#     X_train, X_test, y_train, y_test = train_test_split(, y, train_size=168, random_state=0, shuffle=False)
+    reg = LinearRegression().fit(X[variable].values.reshape(-1, 1), y)
+    df = df.append(pd.Series({'Variable' : variable, 
+                              'Coef' : reg.coef_[0], 
+                              'Intercept' : reg.intercept_, 
+                              'R2':  reg.score(X[variable].values.reshape(-1,1), y)}), ignore_index=True)
+
+    
+# -
+
+df
+
+# ### TA
+
+# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
+X = ta[:ta.loc[(ta.index <= '2011-12-01')].shape[0]-1]
+
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+for variable in ta.columns:
+#     X_train, X_test, y_train, y_test = train_test_split(, y, train_size=168, random_state=0, shuffle=False)
+    reg = LinearRegression().fit(X[variable].values.reshape(-1, 1), y)
+    df = df.append(pd.Series({'Variable' : variable, 
+                              'Coef' : reg.coef_[0], 
+                              'Intercept' : reg.intercept_, 
+                              'R2':  reg.score(X[variable].values.reshape(-1,1), y)}), ignore_index=True)
+
+df
+
 # ### Data restructuring
 # We must create rolling windows of the Macro Economic Variables (MEV) and match them with the 1 month out of sample equity premium in order train a model. 
 
@@ -180,37 +231,6 @@ for variable in mev.columns:
 #     print('R2:', metrics.r2_score(y_test, y_pred))
 #     print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
 #     print('\n')
-# -
-
-df
-
-# # Comparisson to Rapach
-# This is the exact in-sample predicitve regression as run in the Rapach paper of which the results can be found in table 2. This is just to confirm that the findings are in order. 
-# It is the following bi-variate regression which is run on the data from 1951:01 - 2011:12.  
-# $$ r_{t+1} = \alpha_i +\beta_i q_{i,t} + \epsilon_{i,t+1}$$
-#
-
-# +
-#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
-y = ep.shift(periods=-1)[:ep.loc[(ep.index <= '2011-12-01')].shape[0]-1].reset_index(drop=True)
-
-#Convert y to a series with only log equity premium or simple equity premium 
-y = y['Log equity premium'].astype('float64')
-
-# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
-X = mev[:mev.loc[(mev.index <= '2011-12-01')].shape[0]-1]
-
-# +
-df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
-for variable in mev.columns:
-#     X_train, X_test, y_train, y_test = train_test_split(, y, train_size=168, random_state=0, shuffle=False)
-    reg = LinearRegression().fit(X[variable].values.reshape(-1, 1), y)
-    df = df.append(pd.Series({'Variable' : variable, 
-                              'Coef' : reg.coef_[0], 
-                              'Intercept' : reg.intercept_, 
-                              'R2':  reg.score(X[variable].values.reshape(-1,1), y)}), ignore_index=True)
-
-    
 # -
 
 df
