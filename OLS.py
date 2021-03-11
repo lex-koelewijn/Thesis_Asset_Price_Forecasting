@@ -129,6 +129,12 @@ for variable in ta.columns:
 
 df
 
+# ## Rolling Window Regression
+#
+# In the analysis below I have implemented multiple versions of a rolling window variation of the regression. 1
+# 1. First we create a rolling window of all the MEVs of the past 12 months and concatenate them into 1 vector which serves as input for the 1 month out of sample log equity risk premium. 
+# 2. Secondly we create a rolling window of each MEV separately of the past 12 months and concatenate them into 1 vector which serves as input for the 1 month out of sample log equity risk premium. The difference with the first regression is thus that this in this regression we run the analysis for each variable separately to be more in line with Neely, Rapach, Tu and Zhou (2014)/
+
 # ### Data restructuring
 # We must create rolling windows of the Macro Economic Variables (MEV) and match them with the 1 month out of sample equity premium in order train a model. 
 
@@ -158,31 +164,8 @@ intercept = reg.intercept_
 #Make a prediction
 y_pred = reg.predict(X_test)
 
-from sklearn import metrics
-print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
-print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))
-print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
-print('R2:', metrics.r2_score(y_test, y_pred))
-print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
-# -
-
-# ### Train OLS Model Vanilla
-# Train an OLS model without the rolling window variation. Here we just shift the equity premium by 1 such that we alling 1 row of MEV measurements with the 1 month out of sample equity premium. Thus here an OLS is trained on 1 month of MEV variables with the 1 month out of sample equity risk premium. We are NOT looking at the last 12 months in this example. 
-
-X = mev[:mev.shape[0]-1]
-y = ep['Log equity premium'].shift(periods=-1)[:ep['Log equity premium'].shape[0]-1].reset_index(drop=True)
-
-#Create Train and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=168, random_state=0, shuffle=False)
-
-#Train a linear regression model on MEV rolling window data and the corresponding 1 month out of sample equity premium. 
-reg = LinearRegression().fit(X_train, y_train)
-coefficients = reg.coef_
-intercept = reg.intercept_
-
-# +
-#Make a prediction
-y_pred = reg.predict(X_test)
+print('Coefficients: ', coefficients)
+print('Intercept: ', intercept)
 
 from sklearn import metrics
 print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
@@ -234,8 +217,6 @@ for variable in mev.columns:
 # -
 
 df
-
-
 
 
 
