@@ -20,6 +20,7 @@ import numpy as np
 import sklearn
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
 from sklearn import metrics
 from tqdm.notebook import tqdm
 
@@ -120,6 +121,46 @@ for variable in ta.columns:
                               'R2':  reg.score(X[variable].values.reshape(-1,1), y)}), ignore_index=True)
 
 df
+
+# ### Predictive regression based on principal components
+# Below I also reconstruc the in-sample PCA analysis performed by Neely, Rapach, Tu and Zhou (2014) of which the results can be found in table 2. The regression is defined by formula 12 in the paper which is:
+# $$ r_{t+1} = \alpha_i + \sum_{k=1}^{K}\beta_K F_{k,t}^{j} + \epsilon_{i,t+1}$$
+#
+# Where $F_{k,t}^{j}$ represents the the kth principal component created through PCA of all the concatenated variables in the MEV or TA dataset at time t. 
+
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-1)[:ep.loc[(ep.index <= '2011-12-01')].shape[0]-1].reset_index(drop=True)
+
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
+
+# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
+X = mev[:mev.loc[(mev.index <= '2011-12-01')].shape[0]-1]
+# -
+
+pca = PCA(n_components = 3, random_state = 42, whiten=False, svd_solver='auto')
+X_pca = pca.fit_transform(X)
+reg = LinearRegression().fit(X_pca, y)
+print('Intercept: ', reg.intercept_)
+print('Beta PCA1: ', reg.coef_[0])
+print('Beta PCA2: ', reg.coef_[1])
+print('Beta PCA3: ', reg.coef_[2])
+print('R2: ', reg.score(X_pca, y))
+
+# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
+X = ta[:ta.loc[(ta.index <= '2011-12-01')].shape[0]-1]
+
+pca = PCA(n_components = 1, random_state = 42, whiten=False)
+X_pca = pca.fit_transform(X)
+reg = LinearRegression().fit(X_pca, y)
+print('Intercept: ', reg.intercept_)
+print('Beta PCA1: ', reg.coef_[0])
+print('R2: ', reg.score(X_pca, y))
+
+# #### Todo:
+# * Figure out why PCA $\beta$'s are off compared to the paper while the R2 is correct for both MEV and TA. 
+# * Create a PCA for TA+MEV together.
 
 # ## Rolling Window Regression
 #
