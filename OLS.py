@@ -46,15 +46,6 @@ def createRollingWindow1D(dataset, look_back = 1):
     return X
 
 
-def shift_data(steps, X, y):
-    """
-    Function takes a 2D X matrix and 1d y series and shifts them with steps and resizes them such that there are no empty lines. 
-    """
-    X = X[:X.shape[0]-steps]
-    y = y.shift(periods=-steps)[:y.shape[0]-steps].reset_index(drop=True)
-    return X,y
-
-
 # ## Reading Data
 # First we start with loading the relevant data from the excel to be used in our analyis
 
