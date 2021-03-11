@@ -116,7 +116,7 @@ print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
 # -
 
 # ### Train OLS Model Vanilla
-# Train an OLS model without the rolling window variation. Here we just shift the equity premium by 1 such that we alling 1 row of MEV measurements with the 1 month out of sample equity premium. 
+# Train an OLS model without the rolling window variation. Here we just shift the equity premium by 1 such that we alling 1 row of MEV measurements with the 1 month out of sample equity premium. Thus here an OLS is trained on 1 month of MEV variables with the 1 month out of sample equity risk premium. We are NOT looking at the last 12 months in this example. 
 
 X = mev[:mev.shape[0]-1]
 y = ep['Log equity premium'].shift(periods=-1)[:ep['Log equity premium'].shape[0]-1].reset_index(drop=True)
@@ -141,15 +141,79 @@ print('R2:', metrics.r2_score(y_test, y_pred))
 print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
 # -
 
-# ## WIP Notes
-# * What type of OLS regression should I run? Based on MEV and TA seperately I suppose? Perhaps read rapach 
-# * Right now I have contatenated all MEV into one big regression, I'm fairly sure I should do each regression seperately per variable.
+# ## Rolling window OLS estimation for each variable separately
+# Up till now I have combined all variables into 1 window, however this is not in line with Neely, Rapach, Tu and Zhou (2014). They run seperate regression for each macro economic variable and TA variable, and hence that is what should also do. 
+#
+# rollingWindowMEV is a dictionary which will be filled with the 2D dataframes containing the rolling windows for a single variable. Thus rollingWindowsMEV['DP'] would yield the 2D matrix containing the rolling windows for the variable DP and will be of size [No_obs-window_size, window_size] or in our case [828 obs - 12, 12] = [817,12]. The dictionairy is thus accessible with the variable name as index key and these can be obtained from the original data through mev.columns which yields an array of the column names of the original dataframe.
 
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-12)[:ep.shape[0]-12].reset_index(drop=True)
 
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
 
+# +
+# Create empty dictionary
+rollingWindowsMEV = dict()
 
+#Fill the dictionairy with the 2D array with rolling windows for each variable. 
+for variable in mev.columns:
+    rollingWindowsMEV[variable] = createRollingWindow1D(mev[variable], 12)
 
+# +
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
 
+for variable in mev.columns:
+    X_train, X_test, y_train, y_test = train_test_split(rollingWindowsMEV[variable], y, train_size=168, random_state=0, shuffle=False)
+    reg = LinearRegression().fit(X_train, y_train)
+    
+    df = df.append(pd.Series({'Variable' : variable, 
+                              'Coef' : reg.coef_[0], 
+                              'Intercept' : reg.intercept_, 
+                              'R2':  reg.score(X_train, y_train)}), ignore_index=True)
+    
+    y_pred = reg.predict(X_test)
+#     print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))
+#     print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))
+#     print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+#     print('R2:', metrics.r2_score(y_test, y_pred))
+#     print('Explained Variance:', metrics.explained_variance_score(y_test, y_pred))
+#     print('\n')
+# -
+
+df
+
+# # Comparisson to Rapach
+# This is the exact in-sample predicitve regression as run in the Rapach paper of which the results can be found in table 2. This is just to confirm that the findings are in order. 
+# It is the following bi-variate regression which is run on the data from 1951:01 - 2011:12.  
+# $$ r_{t+1} = \alpha_i +\beta_i q_{i,t} + \epsilon_{i,t+1}$$
+#
+
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-1)[:ep.loc[(ep.index <= '2011-12-01')].shape[0]-1].reset_index(drop=True)
+
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
+
+# Remove the last observation such that the size of the dataamtrix coincides with the shifted y euity ridk premium
+X = mev[:mev.loc[(mev.index <= '2011-12-01')].shape[0]-1]
+
+# +
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+for variable in mev.columns:
+#     X_train, X_test, y_train, y_test = train_test_split(, y, train_size=168, random_state=0, shuffle=False)
+    reg = LinearRegression().fit(X[variable].values.reshape(-1, 1), y)
+    df = df.append(pd.Series({'Variable' : variable, 
+                              'Coef' : reg.coef_[0], 
+                              'Intercept' : reg.intercept_, 
+                              'R2':  reg.score(X[variable].values.reshape(-1,1), y)}), ignore_index=True)
+
+    
+# -
+
+df
 
 
 
