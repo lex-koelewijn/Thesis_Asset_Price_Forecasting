@@ -218,6 +218,29 @@ for variable in mev.columns:
 
 df
 
+# +
+# Create empty dictionary
+rollingWindowsTA = dict()
 
+#Fill the dictionairy with the 2D array with rolling windows for each variable. 
+for variable in ta.columns:
+    rollingWindowsTA[variable] = createRollingWindow1D(ta[variable], 12)
+
+# +
+df = pd.DataFrame(columns=['Variable', 'Coef', 'Intercept', 'R2'])
+
+for variable in ta.columns:
+    X_train, X_test, y_train, y_test = train_test_split(rollingWindowsTA[variable], y, train_size=168, random_state=0, shuffle=False)
+    reg = LinearRegression().fit(X_train, y_train)
+    
+    df = df.append(pd.Series({'Variable' : variable, 
+                              'Coef' : reg.coef_[0], 
+                              'Intercept' : reg.intercept_, 
+                              'R2':  reg.score(X_train, y_train)}), ignore_index=True)
+    
+    y_pred = reg.predict(X_test)
+# -
+
+df
 
 
