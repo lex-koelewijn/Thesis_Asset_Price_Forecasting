@@ -18,6 +18,7 @@ import sklearn
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
+from sklearn.decomposition import PCA
 from utils.dm_test import dm_test
 from tqdm.notebook import tqdm #This is not a functional neccesity, but improves the interface. 
 
@@ -202,6 +203,97 @@ with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
 
 # # Principal Components Analysis
 
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-12)[:ep.shape[0]-12].reset_index(drop=True)
 
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
+
+#Create rolling window of the data
+pca = PCA(n_components = 5, random_state = 42, whiten=False, svd_solver='auto')
+X = createRollingWindow(mev,12)
+X_mev_pca = pca.fit_transform(X)
+
+
+# +
+#Initialize empty dataframe
+df_mev_pca = pd.DataFrame(columns=['R2 IS', 'R2 OOS','R2 OOS HA', 'DM', 'MAE', 'MAE HA', 'MSE', 'MSE HA', 'RMSE', 'RMSE HA'])
+y_pred = []
+
+
+#Split data into appropriate train and test size
+X_train, X_test, y_train, y_test = train_test_split(X_mev_pca, y, train_size=168, random_state=0, shuffle=False) #Number of training exmples is defined here, move to global. 
+
+#Create the OOS historical average benchmark
+HA = createRollingWindow1D(ep['Log equity premium'].astype('float64'), 12)
+ha_test = HA.mean(axis=1).loc[168:]
+
+#Define and train the model and evaluate OOS performance. 
+reg = RandomForestRegressor(n_estimators = 300, max_depth = 6, random_state = 42).fit(X_train, y_train)
+y_pred = reg.predict(X_test)
+
+#Compare current model's predictions to the historical average benchmark through Diebold-Mariano test
+DM = dm_test(y_test.astype(float), ha_test.astype(float), pd.Series(y_pred).astype(float))
+
+df_mev_pca = df_mev_pca.append(pd.Series({'R2 IS':  reg.score(X_train, y_train), 
+                          'R2 OOS':  metrics.r2_score(y_test, y_pred),
+                          'R2 OOS HA': metrics.r2_score(y_test, ha_test),       
+                          'DM':  significanceLevel(DM[0], DM[1]),       
+                          'MAE': metrics.mean_absolute_error(y_test, y_pred),
+                          'MAE HA': metrics.mean_absolute_error(y_test, ha_test),
+                          'MSE': metrics.mean_squared_error(y_test, y_pred),
+                          'MSE HA': metrics.mean_squared_error(y_test, ha_test),
+                          'RMSE': np.sqrt(metrics.mean_squared_error(y_test, y_pred)),
+                          'RMSE HA': np.sqrt(metrics.mean_squared_error(y_test, ha_test))}) , ignore_index=True)
+# -
+
+df_mev_pca
+
+# +
+#Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
+y = ep.shift(periods=-12)[:ep.shape[0]-12].reset_index(drop=True)
+
+#Convert y to a series with only log equity premium or simple equity premium 
+y = y['Log equity premium'].astype('float64')
+
+#Create rolling window of the data
+pca = PCA(n_components = 5, random_state = 42, whiten=False, svd_solver='auto')
+X = createRollingWindow(ta,12)
+X_ta_pca = pca.fit_transform(X)
+
+# +
+#Initialize empty dataframe
+df_ta_pca = pd.DataFrame(columns=['R2 IS', 'R2 OOS','R2 OOS HA', 'DM', 'MAE', 'MAE HA', 'MSE', 'MSE HA', 'RMSE', 'RMSE HA'])
+y_pred = []
+
+
+#Split data into appropriate train and test size
+X_train, X_test, y_train, y_test = train_test_split(X_ta_pca, y, train_size=168, random_state=0, shuffle=False) #Number of training exmples is defined here, move to global. 
+
+#Create the OOS historical average benchmark
+HA = createRollingWindow1D(ep['Log equity premium'].astype('float64'), 12)
+ha_test = HA.mean(axis=1).loc[168:]
+
+#Define and train the model and evaluate OOS performance. 
+reg = RandomForestRegressor(n_estimators = 300, max_depth = 6, random_state = 42).fit(X_train, y_train)
+y_pred = reg.predict(X_test)
+
+#Compare current model's predictions to the historical average benchmark through Diebold-Mariano test
+DM = dm_test(y_test.astype(float), ha_test.astype(float), pd.Series(y_pred).astype(float))
+
+df_ta_pca = df_ta_pca.append(pd.Series({'R2 IS':  reg.score(X_train, y_train), 
+                          'R2 OOS':  metrics.r2_score(y_test, y_pred),
+                          'R2 OOS HA': metrics.r2_score(y_test, ha_test),       
+                          'DM':  significanceLevel(DM[0], DM[1]),       
+                          'MAE': metrics.mean_absolute_error(y_test, y_pred),
+                          'MAE HA': metrics.mean_absolute_error(y_test, ha_test),
+                          'MSE': metrics.mean_squared_error(y_test, y_pred),
+                          'MSE HA': metrics.mean_squared_error(y_test, ha_test),
+                          'RMSE': np.sqrt(metrics.mean_squared_error(y_test, y_pred)),
+                          'RMSE HA': np.sqrt(metrics.mean_squared_error(y_test, ha_test))}) , ignore_index=True)
+# -
+
+df_ta_pca
 
 
