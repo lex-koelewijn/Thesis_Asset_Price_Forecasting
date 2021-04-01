@@ -43,7 +43,8 @@ plt.title('S&P 500 Spot Index Level', fontweight = 'bold')
 plt.figure(figsize=(24,12))
 # plt.plot(ep['Simple equity premium'], label = 'S&P 500 Simple equity premium', linewidth = .75)
 # plt.plot(ep['Log equity premium'], label = 'S&P 500 Log equity premium', linewidth = .75)
-plt.plot(spot['S&P 500 index']-spot['S&P 500 index'].shift(1), label = 'S&P500 Monthly return')
+# plt.plot((spot['S&P 500 index']/spot['S&P 500 index'].shift(1))-1, label = 'S&P500 Monthly return')
+plt.plot(np.log(spot['S&P 500 index'])-np.log(spot['S&P 500 index'].shift(1)), label = 'S&P500 Monthly return')
 # plt.plot(spot['S&P 500 index'].diff(1))
 plt.legend()
 plt.title('S&P 500 Monthly Returns', fontweight = 'bold')
@@ -56,11 +57,13 @@ ax[0].plot(spot, label = 'S&P 500 Spot Index Level', linewidth = .75)
 ax[0].legend()
 ax[0].title.set_text('S&P 500 Index Level')
 
-ax[1].plot(spot['S&P 500 index']-spot['S&P 500 index'].shift(1), label = 'S&P500 Monthly return')
+ax[1].plot(np.log(spot['S&P 500 index'])-np.log(spot['S&P 500 index'].shift(1)), label = 'S&P500 Monthly return')
 ax[1].legend()
 ax[1].title.set_text('S&P 500 Monthly Returns')
 
 plt.savefig("plots/SP500.png", bbox_inches='tight', dpi=500)
 # -
+
+
 
 
