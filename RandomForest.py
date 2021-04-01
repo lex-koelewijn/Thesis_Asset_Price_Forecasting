@@ -113,7 +113,7 @@ for variable in mev.columns:
     ha_test = HA.mean(axis=1).loc[168:]
 
     #Define and train the model and evaluate OOS performance. 
-    reg = RandomForestRegressor(random_state = 42).fit(X_train, y_train)
+    reg = RandomForestRegressor(n_estimators = 300, max_depth = 6, random_state = 42).fit(X_train, y_train)
     y_pred = reg.predict(X_test)
     
     #Compare current model's predictions to the historical average benchmark through Diebold-Mariano test
@@ -175,7 +175,7 @@ for variable in ta.columns:
     ha_test = HA.mean(axis=1).loc[168:]
 
     #Define and train the model and evaluate OOS performance. 
-    reg = RandomForestRegressor(random_state = 42).fit(X_train, y_train)
+    reg = RandomForestRegressor(n_estimators = 300, max_depth = 6, random_state = 42).fit(X_train, y_train)
     y_pred = reg.predict(X_test)
     
     #Compare current model's predictions to the historical average benchmark through Diebold-Mariano test
@@ -195,6 +195,10 @@ for variable in ta.columns:
 # -
 
 df_ta.round(4)
+
+with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
+    df_mev.round(4).to_excel(writer, sheet_name='MEV')
+    df_ta.round(4).to_excel(writer, sheet_name='TA')
 
 # # Principal Components Analysis
 
