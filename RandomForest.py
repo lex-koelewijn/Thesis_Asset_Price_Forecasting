@@ -36,14 +36,18 @@ def createRollingWindow(dataset, look_back = 1):
     return X
 
 
-def createRollingWindow1D(dataset, look_back = 1):
+def createRollingWindow1D(dataset, returns, look_back = 1):
     """
     Function takes a 1 dimensional array as input and outputs a 2 dimensional array containing rolling windows of the series of size look_back. (Where each row is a rolling window)
+    The corresponding returns (y) will also be shifted to be in line with the look_back variable such that the rolling windows and the 1 month OOS return line up.
     """
     X= pd.DataFrame(np.empty((dataset.shape[0] - look_back, look_back)))
     for i in range(dataset.shape[0] - look_back):    
         X.iloc[i] = dataset.iloc[i:(i + look_back):].to_numpy().flatten()
-    return X
+        
+    y = returns.shift(periods=-look_back)[:returns.shape[0]-look_back].reset_index(drop=True)['Log equity premium'].astype('float64')
+#     y = y
+    return X, y
 
 
 def significanceLevel(stat, pVal):
@@ -84,6 +88,56 @@ ta = ta.loc[(ta.index >= '1950-12-01')]
 # In the code below we will train a random forest for each macro economic variable and technical indicator separately using a rolling window of the past 12 months for each variable/indicator. The recorded R2 score is based on in sample analysis, but the MAE, MSE and MSE are calculated using out of sample analysis. Thus the random forest is trained ussing rolling windows from 1950:12 to 1965:12 yielding 180-12=168 rolling windows. The model is then assessed in terms of prediction accuracy in MAE, MSE and RMSE using data from 1966:01 to 2019:12 yielding 648 rolling windows. 
 # ### Macro Economic Variables
 
+window_size = 180
+
+#Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
+# and each row in y with the same index is t+1.
+y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
+X_mev = mev.iloc[:mev.shape[0]-1]
+
+# +
+results_mev = pd.DataFrame(columns=['Date_t', 'Date_t1', 'Actual', 'Pred', 'HA']) 
+
+for i in tqdm(range(0, X_mev.shape[0]-window_size)):
+    #Slice the 180 month rolling window to train the model
+    X = X_mev.iloc[i:(window_size + i):]
+    y = y_mev[i:(window_size + i):]
+    
+    #Get the X datapoint at time t (the most recent one) and seperate from the training set. 
+    X_t = X.tail(1)
+    y_t1 = y.tail(1)
+    X = X.iloc[:X.shape[0]-1]
+    y = y.iloc[:y.shape[0]-1]
+    
+    #Train a random forest model on current slice of data
+    RF = RandomForestRegressor(n_estimators = 300, max_depth = 6, random_state = 42).fit(X, y)
+    
+    #Make a 1 month OOS prediction of the current time point t.
+    y_pred = RF.predict(X_t)
+    
+    #Calculate the historical average based on all returns in the current window
+    HA = y.mean()
+    
+    results_mev = results_mev.append(pd.Series({
+        'Date_t': X_t.index.format()[0],
+        'Date_t1': ep.index[window_size+i],
+        'Actual': y_t1.values.astype('float64')[0],
+        'Pred': y_pred[0],
+        'HA': HA
+    }), ignore_index=True)
+    
+    
+
+    
+# -
+
+results_mev
+
+DM = dm_test(results_mev['Actual'].astype(float), results_mev['HA'].astype(float), results_mev['Pred'].astype(float))
+print(DM)
+
+
+
 # +
 #Shift equity premiumms such that they correspond to the 1 month out of sample corresponding to each window. 
 y = ep.shift(periods=-12)[:ep.shape[0]-12].reset_index(drop=True)
@@ -97,7 +151,6 @@ rollingWindowsMEV = dict()
 
 #Fill the dictionairy with the 2D array with rolling windows for each variable. 
 for variable in mev.columns:
-
     rollingWindowsMEV[variable] = createRollingWindow1D(mev[variable], 12)
 
 # +
