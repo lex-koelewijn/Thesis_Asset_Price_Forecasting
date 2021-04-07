@@ -15,6 +15,7 @@
 import sklearn
 import cProfile
 import pstats
+import os
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -75,6 +76,12 @@ def significanceLevel(stat, pVal):
         return str(round(stat,2))
 
 
+def check_existence_directory(directories):
+    for direc in directories:
+        if not os.path.exists(direc):
+            os.makedirs(direc)
+
+
 # ## Reading Data
 # First we start with loading the relevant data from the excel to be used in our analyis
 
@@ -114,6 +121,7 @@ ta = ta.loc[(ta.index >= '1950-12-01')]
 
 window_size = 180
 resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'DM']) 
+check_existence_directory(['output'])
 
 #Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
 # and each row in y with the same index is t+1.
