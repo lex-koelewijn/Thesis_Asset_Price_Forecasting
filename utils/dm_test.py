@@ -154,7 +154,8 @@ def dm_test(actual_lst, pred1_lst, pred2_lst, h = 1, crit="MSE", power = 2):
     harvey_adj=((T+1-2*h+h*(h-1)/T)/T)**(0.5)
     DM_stat = harvey_adj*DM_stat
     # Find p-value
-    p_value = 2*t.cdf(-abs(DM_stat), df = T - 1)
+#     p_value = 2*t.cdf(-abs(DM_stat), df = T - 1) #Two tailed
+    p_value = t.cdf(-DM_stat, df = T - 1) #one-tailed
     
     # Construct named tuple for return
     dm_return = collections.namedtuple('dm_return', 'DM p_value')

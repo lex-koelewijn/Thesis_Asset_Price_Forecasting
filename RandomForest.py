@@ -93,7 +93,15 @@ ta = ta.set_index('Date')
 ta = ta.loc[(ta.index >= '1950-12-01')]
 
 # # Random Forest
-# In the code below we will train a random forest for each macro economic variable and technical indicator separately using a rolling window of the past 12 months for each variable/indicator. The recorded R2 score is based on in sample analysis, but the MAE, MSE and MSE are calculated using out of sample analysis. Thus the random forest is trained ussing rolling windows from 1950:12 to 1965:12 yielding 180-12=168 rolling windows. The model is then assessed in terms of prediction accuracy in MAE, MSE and RMSE using data from 1966:01 to 2019:12 yielding 648 rolling windows. 
+# In the code below a random forest setup will first be used for the macro economic variables (MEV) and then for the technical indicators (TA). I will first give a general overview of the setup: 
+#
+# A rollwing window with a size of 180 months is used to select the training sample of the data on which we train the model to make the 1 month OOS forecast. Thus for example:
+# 1. First rolling window: Train model on MEV data from 1950:12 - 1965:12 and make prediction for 1966:01
+# 2. Second rolling window: Train model on MEV data from 1951:01 - 1966:01 and make prediction for 1966:02
+# 3. Etc. 
+#
+# The model is trained using the vector $z_t$ which contains all the macroeconomic variables at time t as the indepent variables and the return at time $t+1$ is used as the dependent variable. The model tries to find a function for $r_{t+1} = g^*(z_t)$. Thus each rolling window has 180 observations used to train the model and this trained model will then predict the return at time $t+1$.
+#
 # ### Macro Economic Variables
 
 window_size = 180
@@ -178,11 +186,9 @@ resultsRF = resultsRF.append(pd.Series({
 
 # In the result below the follow elements can be found:
 # * R2 = The out of sample $R^2$ score as defined by eq. 25 in the thesis. 
-# * DM: The test statistic for a two-sided Diebold Mariano test with its significance level. The null hypothesis is that there is no difference between the forecasts. When the result is significant there is a difference: posistive values for the DM statistic indicate that the model outperforms the historical average while negative values indicate thet the historical average performs better than the model.
-#     * $H_0$: No statisstically significant difference between the forecasts of the model and the historical average
-#     * $H_A$: Forcasts of model are significantly difference from historical average. 
-#         * Negative DM: Model is significantly worse than HA
-#         * Positive DM: Model is signifcantly better than HA
+# * DM: The test statistic for a one-sided Diebold Mariano test with its significance level: 
+#     * $H_0$: Forcasts of model are worse than historical average or not significantly different from the historical average. 
+#     * $H_A$: Forcasts of model are significantly better than historical average. 
 
 resultsRF
 
@@ -190,5 +196,13 @@ with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
     resultsRF.to_excel(writer, sheet_name='Accuracy')
 
 # # Principal Components Analysis
+
+
+
+
+
+
+
+
 
 
