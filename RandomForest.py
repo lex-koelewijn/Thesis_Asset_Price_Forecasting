@@ -53,12 +53,18 @@ def createRollingWindow1D(dataset, returns, look_back = 1):
 
 
 def R2(actual, predicted, average):
+    """
+    Calculated the R2 score of the vectors containing the actual returns, predicted returns and the average returns. 
+    """
     SSR = sum((actual-predicted)**2)
     SST = sum((actual-average)**2)
     return (1- SSR/SST)
 
 
 def significanceLevel(stat, pVal):
+    """
+    Function to format statistical test results by adding asterisks for the appropriate significance levels and round the numbers. 
+    """
     if(pVal < 0.01):
         return str(round(stat,2)) + '***'
     elif(pVal < 0.05):
@@ -101,6 +107,8 @@ ta = ta.loc[(ta.index >= '1950-12-01')]
 # 3. Etc. 
 #
 # The model is trained using the vector $z_t$ which contains all the macroeconomic variables at time t as the indepent variables and the return at time $t+1$ is used as the dependent variable. The model tries to find a function for $r_{t+1} = g^*(z_t)$. Thus each rolling window has 180 observations used to train the model and this trained model will then predict the return at time $t+1$.
+#
+# After we have gone through all the data we can look at the accuracy of the model though the $R^2$ metric. Furthermore we can compare the forecasts produced by the model with the historical average through the Diebold Mariano test to see whether the model is significantly better than the historical average benchmark
 #
 # ### Macro Economic Variables
 
@@ -157,6 +165,7 @@ def trainRandomForest(X_mev, y_mev, window_size):
 # -
 
 results_mev = trainRandomForest(X_mev, y_mev, window_size)
+results_mev.to_parquet('output/RF_MEV.gzip', compression='gzip')
 
 DM = dm_test(results_mev['Actual'].astype(float), results_mev['HA'].astype(float), results_mev['Pred'].astype(float))
 resultsRF = resultsRF.append(pd.Series({
@@ -175,6 +184,7 @@ y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity p
 X_ta = ta.iloc[:ta.shape[0]-1]
 
 results_ta = trainRandomForest(X_ta, y_ta, window_size)
+results_ta.to_parquet('output/RF_TA.gzip', compression='gzip')
 
 DM = dm_test(results_ta['Actual'].astype(float), results_ta['HA'].astype(float), results_ta['Pred'].astype(float))
 resultsRF = resultsRF.append(pd.Series({
