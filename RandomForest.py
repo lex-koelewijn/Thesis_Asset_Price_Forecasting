@@ -76,6 +76,13 @@ def significanceLevel(stat, pVal):
         return str(round(stat,2))
 
 
+def directionalAccuracy(actual, predicted):
+    """
+    Calculate the directional accuracy of a predicted series compared to the actual series. Output is a value between 0 and 1 representing a percentage.
+    """
+    return round(sum(np.sign(actual) == np.sign(predicted))/actual.shape[0]*100,2)
+
+
 def check_existence_directory(directories):
     for direc in directories:
         if not os.path.exists(direc):
@@ -173,20 +180,20 @@ def trainRandomForest(X_mev, y_mev, window_size):
 # -
 
 try: 
-    result_mev = pd.read_parquet('output/RF_MEV.gzip')
+    results_mev = pd.read_parquet('output/RF_MEV.gzip')
 except:
     print('No saved results found, running model estimation.')
     results_mev = trainRandomForest(X_mev, y_mev, window_size)
     results_mev.to_parquet('output/RF_MEV.gzip', compression='gzip')
-
-result_mev
 
 DM = dm_test(results_mev['Actual'].astype(float), results_mev['HA'].astype(float), results_mev['Pred'].astype(float))
 resultsRF = resultsRF.append(pd.Series({
             'Method': 'Random Forest',
             'Dataset': 'MEV',
             'R2': round(R2(results_mev.Actual, results_mev.Pred, results_mev.HA) , 3),
-            'DM': significanceLevel(DM[0], DM[1])
+            'DM': significanceLevel(DM[0], DM[1]),
+            'DA': directionalAccuracy(results_mev.Actual, results_mev.Pred),
+            'DA HA': directionalAccuracy(results_mev.Actual, results_mev.HA)
         }), ignore_index=True)
 
 # ### Technical Indiciators
@@ -198,7 +205,7 @@ y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity p
 X_ta = ta.iloc[:ta.shape[0]-1]
 
 try: 
-    result_ta = pd.read_parquet('output/RF_TA.gzip')
+    results_ta = pd.read_parquet('output/RF_TA.gzip')
 except:
     print('No saved results found, running model estimation.')
     results_ta = trainRandomForest(X_ta, y_ta, window_size)
@@ -209,14 +216,19 @@ resultsRF = resultsRF.append(pd.Series({
             'Method': 'Random Forest',
             'Dataset': 'TA',
             'R2': round(R2(results_ta.Actual, results_ta.Pred, results_ta.HA) , 3),
-            'DM': significanceLevel(DM[0], DM[1])
+            'DM': significanceLevel(DM[0], DM[1]),
+            'DA': directionalAccuracy(results_ta.Actual, results_ta.Pred),
+            'DA HA': directionalAccuracy(results_ta.Actual, results_ta.HA)
         }), ignore_index=True)
 
+# ## Output
 # In the result below the follow elements can be found:
 # * R2 = The out of sample $R^2$ score as defined by eq. 25 in the thesis. A negative value means the models predictions are worse than the historical average benchmark.
 # * DM: The test statistic for a one-sided Diebold Mariano test with its significance level: 
 #     * $H_0$: Forcasts of model are worse than historical average or not significantly different from the historical average. 
 #     * $H_A$: Forcasts of model are significantly better than historical average. 
+# * DA: The directional accuracy of the model in terms of the percentage of predictions that have the correct direction. 
+# * DA HA: The directional accuracy of the historical averave in terms of percentage of prediction that have the correct direction.
 
 resultsRF
 
