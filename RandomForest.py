@@ -12,6 +12,7 @@
 #     name: python3
 # ---
 
+# +
 import sklearn
 import cProfile
 import pstats
@@ -21,9 +22,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
-from sklearn.decomposition import PCA
+ 
 from utils.dm_test import dm_test
 from tqdm.notebook import tqdm #This is not a functional neccesity, but improves the interface. 
+# -
 
 pd.set_option('display.max_columns', None)
 
@@ -213,6 +215,40 @@ except:
 
 resultsRF = analyzeResults(results_ta, resultsRF, method = 'Random Forest', dataset = 'TA')
 
+with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
+    resultsRF.to_excel(writer, sheet_name='Accuracy')
+
+# # Principal Components Analysis
+# ### Macro Economic Variables
+
+pca = PCA(n_components=3, svd_solver='full')
+X_mev_pca = pd.DataFrame(pca.fit_transform(X_mev))
+
+# Check if we have the stored results available. If not then we train the model and save the results.
+try: 
+    results_mev_pca = pd.read_parquet('output/RF_MEV_PCA.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_mev_pca = trainRandomForest(X_mev_pca, y_mev, window_size)
+    results_mev_pca.to_parquet('output/RF_MEV_PCA.gzip', compression='gzip')
+
+resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest', dataset = 'MEV PCA')
+
+# ### Technical Indicators
+
+pca = PCA(n_components=3, svd_solver='full')
+X_ta_pca = pd.DataFrame(pca.fit_transform(X_ta))
+
+# Check if we have the stored results available. If not then we train the model and save the results.
+try: 
+    results_ta_pca = pd.read_parquet('output/RF_TA_PCA.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_ta_pca = trainRandomForest(X_ta_pca, y_ta, window_size)
+    results_ta_pca.to_parquet('output/RF_TA_PCA.gzip', compression='gzip')
+
+resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'TA PCA')
+
 # ## Output
 # In the result below the follow elements can be found:
 # * R2 = The out of sample $R^2$ score as defined by eq. 25 in the thesis. A negative value means the models predictions are worse than the historical average benchmark.
@@ -223,18 +259,5 @@ resultsRF = analyzeResults(results_ta, resultsRF, method = 'Random Forest', data
 # * DA HA: The directional accuracy of the historical averave in terms of percentage of prediction that have the correct direction.
 
 resultsRF
-
-with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
-    resultsRF.to_excel(writer, sheet_name='Accuracy')
-
-# # Principal Components Analysis
-
-
-
-
-
-
-
-
 
 
