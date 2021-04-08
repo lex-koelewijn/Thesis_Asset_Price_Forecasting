@@ -172,8 +172,14 @@ def trainRandomForest(X_mev, y_mev, window_size):
 # ps.sort_stats('cumulative').print_stats(0.1)
 # -
 
-results_mev = trainRandomForest(X_mev, y_mev, window_size)
-results_mev.to_parquet('output/RF_MEV.gzip', compression='gzip')
+try: 
+    result_mev = pd.read_parquet('output/RF_MEV.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_mev = trainRandomForest(X_mev, y_mev, window_size)
+    results_mev.to_parquet('output/RF_MEV.gzip', compression='gzip')
+
+result_mev
 
 DM = dm_test(results_mev['Actual'].astype(float), results_mev['HA'].astype(float), results_mev['Pred'].astype(float))
 resultsRF = resultsRF.append(pd.Series({
@@ -191,8 +197,12 @@ resultsRF = resultsRF.append(pd.Series({
 y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_ta = ta.iloc[:ta.shape[0]-1]
 
-results_ta = trainRandomForest(X_ta, y_ta, window_size)
-results_ta.to_parquet('output/RF_TA.gzip', compression='gzip')
+try: 
+    result_ta = pd.read_parquet('output/RF_TA.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_ta = trainRandomForest(X_ta, y_ta, window_size)
+    results_ta.to_parquet('output/RF_TA.gzip', compression='gzip')
 
 DM = dm_test(results_ta['Actual'].astype(float), results_ta['HA'].astype(float), results_ta['Pred'].astype(float))
 resultsRF = resultsRF.append(pd.Series({
@@ -203,7 +213,7 @@ resultsRF = resultsRF.append(pd.Series({
         }), ignore_index=True)
 
 # In the result below the follow elements can be found:
-# * R2 = The out of sample $R^2$ score as defined by eq. 25 in the thesis. 
+# * R2 = The out of sample $R^2$ score as defined by eq. 25 in the thesis. A negative value means the models predictions are worse than the historical average benchmark.
 # * DM: The test statistic for a one-sided Diebold Mariano test with its significance level: 
 #     * $H_0$: Forcasts of model are worse than historical average or not significantly different from the historical average. 
 #     * $H_A$: Forcasts of model are significantly better than historical average. 
