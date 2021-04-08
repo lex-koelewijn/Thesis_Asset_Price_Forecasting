@@ -112,6 +112,7 @@ ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
 ta = ta.set_index('Date')
 ta = ta.loc[(ta.index >= '1950-12-01')]
 
+
 # # Random Forest
 # In the code below a random forest setup will first be used for the macro economic variables (MEV) and then for the technical indicators (TA). I will first give a general overview of the setup: 
 #
@@ -122,19 +123,9 @@ ta = ta.loc[(ta.index >= '1950-12-01')]
 #
 # The model is trained using the vector $z_t$ which contains all the macroeconomic variables at time t as the indepent variables and the return at time $t+1$ is used as the dependent variable. The model tries to find a function for $r_{t+1} = g^*(z_t)$. Thus each rolling window has 180 observations used to train the model and this trained model will then predict the return at time $t+1$.
 #
-# After we have gone through all the data we can look at the accuracy of the model though the $R^2$ metric. Furthermore we can compare the forecasts produced by the model with the historical average through the Diebold Mariano test to see whether the model is significantly better than the historical average benchmark
+# After we have gone through all the data we can look at the accuracy of the model though the $R^2$ metric. Furthermore we can compare the forecasts produced by the model with the historical average through the Diebold Mariano test to see whether the model is significantly better than the historical average benchmark.
 #
-# ### Macro Economic Variables
-
-window_size = 180
-resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'DM']) 
-check_existence_directory(['output'])
-
-#Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
-# and each row in y with the same index is t+1.
-y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
-X_mev = mev.iloc[:mev.shape[0]-1]
-
+# Below follow first the general functions to train a random forest, analyze the results and some global variables that are set. Then the analysis is done with a number of different setups.
 
 def trainRandomForest(X_mev, y_mev, window_size):
     results_mev = pd.DataFrame(columns=['Date_t', 'Date_t1', 'Actual', 'Pred', 'HA']) 
@@ -170,15 +161,31 @@ def trainRandomForest(X_mev, y_mev, window_size):
     return results_mev
 
 
-# + jupyter={"source_hidden": true}
-# profile = cProfile.Profile()
-# profile.enable()
-# results_mev = trainRandomForest(X_mev, y_mev, window_size)
-# profile.disable()
-# ps = pstats.Stats(profile)
-# ps.sort_stats('cumulative').print_stats(0.1)
-# -
+def analyzeResults(results, resultsRF, method, dataset):
+    DM = dm_test(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
+    resultsRF = resultsRF.append(pd.Series({
+                'Method': method,
+                'Dataset': dataset,
+                'R2': round(R2(results.Actual, results.Pred, results.HA) , 3),
+                'DM': significanceLevel(DM[0], DM[1]),
+                'DA': directionalAccuracy(results.Actual, results.Pred),
+                'DA HA': directionalAccuracy(results.Actual, results.HA)
+            }), ignore_index=True)
+    return resultsRF
 
+
+window_size = 180
+resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'DM']) 
+check_existence_directory(['output'])
+
+# ### Macro Economic Variables
+
+#Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
+# and each row in y with the same index is t+1.
+y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
+X_mev = mev.iloc[:mev.shape[0]-1]
+
+# Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_mev = pd.read_parquet('output/RF_MEV.gzip')
 except:
@@ -186,15 +193,7 @@ except:
     results_mev = trainRandomForest(X_mev, y_mev, window_size)
     results_mev.to_parquet('output/RF_MEV.gzip', compression='gzip')
 
-DM = dm_test(results_mev['Actual'].astype(float), results_mev['HA'].astype(float), results_mev['Pred'].astype(float))
-resultsRF = resultsRF.append(pd.Series({
-            'Method': 'Random Forest',
-            'Dataset': 'MEV',
-            'R2': round(R2(results_mev.Actual, results_mev.Pred, results_mev.HA) , 3),
-            'DM': significanceLevel(DM[0], DM[1]),
-            'DA': directionalAccuracy(results_mev.Actual, results_mev.Pred),
-            'DA HA': directionalAccuracy(results_mev.Actual, results_mev.HA)
-        }), ignore_index=True)
+resultsRF = analyzeResults(results_mev, resultsRF, method = 'Random Forest', dataset = 'MEV')
 
 # ### Technical Indiciators
 #
@@ -204,6 +203,7 @@ resultsRF = resultsRF.append(pd.Series({
 y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_ta = ta.iloc[:ta.shape[0]-1]
 
+# Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_ta = pd.read_parquet('output/RF_TA.gzip')
 except:
@@ -211,15 +211,7 @@ except:
     results_ta = trainRandomForest(X_ta, y_ta, window_size)
     results_ta.to_parquet('output/RF_TA.gzip', compression='gzip')
 
-DM = dm_test(results_ta['Actual'].astype(float), results_ta['HA'].astype(float), results_ta['Pred'].astype(float))
-resultsRF = resultsRF.append(pd.Series({
-            'Method': 'Random Forest',
-            'Dataset': 'TA',
-            'R2': round(R2(results_ta.Actual, results_ta.Pred, results_ta.HA) , 3),
-            'DM': significanceLevel(DM[0], DM[1]),
-            'DA': directionalAccuracy(results_ta.Actual, results_ta.Pred),
-            'DA HA': directionalAccuracy(results_ta.Actual, results_ta.HA)
-        }), ignore_index=True)
+resultsRF = analyzeResults(results_ta, resultsRF, method = 'Random Forest', dataset = 'TA')
 
 # ## Output
 # In the result below the follow elements can be found:
