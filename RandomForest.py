@@ -12,7 +12,6 @@
 #     name: python3
 # ---
 
-# +
 import sklearn
 import cProfile
 import pstats
@@ -22,10 +21,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
- 
+from sklearn.decomposition import PCA
 from utils.dm_test import dm_test
+from utils.cw_test import clarkWestTest
 from tqdm.notebook import tqdm #This is not a functional neccesity, but improves the interface. 
-# -
 
 pd.set_option('display.max_columns', None)
 
@@ -165,11 +164,12 @@ def trainRandomForest(X_mev, y_mev, window_size):
 
 def analyzeResults(results, resultsRF, method, dataset):
     DM = dm_test(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
+    CW = clarkWestTest(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
     resultsRF = resultsRF.append(pd.Series({
                 'Method': method,
                 'Dataset': dataset,
                 'R2': round(R2(results.Actual, results.Pred, results.HA) , 3),
-                'DM': significanceLevel(DM[0], DM[1]),
+                'CW': significanceLevel(CW[0], CW[1]),
                 'DA': directionalAccuracy(results.Actual, results.Pred),
                 'DA HA': directionalAccuracy(results.Actual, results.HA)
             }), ignore_index=True)
@@ -177,7 +177,7 @@ def analyzeResults(results, resultsRF, method, dataset):
 
 
 window_size = 180
-resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'DM']) 
+resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
 check_existence_directory(['output'])
 
 # ### Macro Economic Variables
@@ -215,8 +215,21 @@ except:
 
 resultsRF = analyzeResults(results_ta, resultsRF, method = 'Random Forest', dataset = 'TA')
 
-with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
-    resultsRF.to_excel(writer, sheet_name='Accuracy')
+# ### All Variables
+
+X_all = pd.DataFrame()
+X_all = pd.concat([X_mev,X_ta], ignore_index = False, axis =1)
+y_all = y_mev
+
+# Check if we have the stored results available. If not then we train the model and save the results.
+try: 
+    results_all = pd.read_parquet('output/RF_ALL.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_all = trainRandomForest(X_all, y_all, window_size)
+    results_all.to_parquet('output/RF_ALL.gzip', compression='gzip')
+
+resultsRF = analyzeResults(results_all, resultsRF, method = 'Random Forest', dataset = 'ALL')
 
 # # Principal Components Analysis
 # ### Macro Economic Variables
@@ -259,5 +272,18 @@ resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', 
 # * DA HA: The directional accuracy of the historical averave in terms of percentage of prediction that have the correct direction.
 
 resultsRF
+
+with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
+    resultsRF.to_excel(writer, sheet_name='Accuracy')
+
+
+
+
+
+
+
+
+
+
 
 
