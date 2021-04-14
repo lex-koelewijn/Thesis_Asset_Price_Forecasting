@@ -3,6 +3,9 @@ import numpy as np
 from scipy.stats import norm
 from numpy.linalg import inv
 
+# actual      = n-vector of actual values
+# benchmark   = n-vestor of forecasts for the restricted model
+# model       = n-vector of forecasts for the unresitrcted model. 
 def clarkWestTest(actual, benchmark, model):
     size = actual.shape[0]
     f_hat = (actual - benchmark)**2 - ((actual-model)**2 - (benchmark-model)**2)
