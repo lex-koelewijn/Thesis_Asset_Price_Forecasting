@@ -278,12 +278,56 @@ resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', 
 
 resultsRF
 
+
+# # Analysis Per Variable
+# Up till now we have trained models using a vector of all variables at each time point. In the analysis below models will be trained for each variable seperately with the same set up as above. This allows us to observe the predictive power of variables indivdually given the current model architecucture.
+
+# +
+def runAnalysisPerVariable(X_raw, y_raw, window_size, dataset):
+    # Initialize empty datafram to contain the results. 
+    resultsDF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
+
+    for variable in X_raw.columns:
+        # Init y
+        y = y_raw.shift(periods=-1)[:y_raw.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
+
+        # Select current variable and reshape such that pandas and numpy understand each other. 
+        X = X_raw.iloc[:X_raw.shape[0]-1][variable]
+        X = pd.DataFrame(X.values.reshape(-1, 1))
+
+        # If model has been trained already we load input, otherwise train model. 
+        try: 
+            results = pd.read_parquet('output/RF_' + dataset + '_' + str(variable) + '.gzip')
+        except:
+            print('No saved results found, running model estimation.')
+            results = trainRandomForest(X, y, window_size)
+            results.to_parquet('output/RF_' + dataset + '_' + str(variable) + '.gzip', compression='gzip')
+
+
+        #Analyze the results
+        resultsDF = analyzeResults(results, resultsDF, method = 'Random Forest', dataset =   dataset + ': ' + str(variable))
+    return resultsDF
+    
+
+
+# -
+
+# ### MEV Analysis
+
+resultsMEV = runAnalysisPerVariable(mev, ep, window_size, dataset = 'MEV')
+
+resultsMEV
+
+# ### TA Analysis
+
+resultsTA = runAnalysisPerVariable(ta, ep, window_size, dataset='TA')
+
+resultsTA
+
 with pd.ExcelWriter('output/RandomForest.xlsx') as writer:
     resultsRF.to_excel(writer, sheet_name='Accuracy')
-
-
-
-
+    resultsMEV.to_excel(writer, sheet_name='MEV')
+    resultsTA.to_excel(writer, sheet_name='TA')
 
 
 
