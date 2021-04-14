@@ -20,6 +20,7 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
 from sklearn.decomposition import PCA
 from utils.dm_test import dm_test
@@ -235,14 +236,16 @@ resultsRF = analyzeResults(results_all, resultsRF, method = 'Random Forest', dat
 # ### Macro Economic Variables
 
 pca = PCA(n_components=3, svd_solver='full')
-X_mev_pca = pd.DataFrame(pca.fit_transform(X_mev))
+scalerX = StandardScaler()
+X_mev_pca = scalerX.fit_transform(X_mev, y_mev)
+X_mev_pca = pd.DataFrame(pca.fit_transform(X_mev_pca))
 
 # Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_mev_pca = pd.read_parquet('output/RF_MEV_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_mev_pca = trainRandomForest(X_mev_pca, y_mev, window_size)
+    results_mev_pca = trainRandomForest(X_mev_pca, y_pca, window_size)
     results_mev_pca.to_parquet('output/RF_MEV_PCA.gzip', compression='gzip')
 
 resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest', dataset = 'MEV PCA')
@@ -250,14 +253,16 @@ resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest',
 # ### Technical Indicators
 
 pca = PCA(n_components=3, svd_solver='full')
-X_ta_pca = pd.DataFrame(pca.fit_transform(X_ta))
+scalerX = StandardScaler()
+X_ta_pca = scalerX.fit_transform(X_ta, y_ta)
+X_ta_pca = pd.DataFrame(pca.fit_transform(X_ta_pca))
 
 # Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_ta_pca = pd.read_parquet('output/RF_TA_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_ta_pca = trainRandomForest(X_ta_pca, y_ta, window_size)
+    results_ta_pca = trainRandomForest(X_ta_pca, y_pca, window_size)
     results_ta_pca.to_parquet('output/RF_TA_PCA.gzip', compression='gzip')
 
 resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'TA PCA')
