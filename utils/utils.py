@@ -73,3 +73,30 @@ def analyzeResults(results, resultsRF, method, dataset):
                 'DA HA': directionalAccuracy(results.Actual, results.HA)
             }), ignore_index=True)
     return resultsRF
+
+def readEquityPremiumData():
+    #Read the equity premium series to a dataframe
+    ep = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Equity premium', skiprows= range(1118,1127,1))[:-1]
+    ep['Date'] = pd.to_datetime(ep['Date'], format='%Y%m')
+    ep = ep.set_index('Date')
+    ep = ep.loc[(ep.index >= '1950-12-01')]
+    return ep
+
+def readMacroEconomicVariableData():
+    #Read the maacroeconomic variables to a dataframe
+    mev = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Macroeconomic variables', 
+                        skiprows= range(1118,1126,1)).fillna(method='bfill')[:-1] #backward fill missing values. 
+    mev = mev.loc[:, ~mev.columns.str.match('Unnamed')]  #Remove empty column
+    mev['Date'] = pd.to_datetime(mev['Date'], format='%Y%m') #convert date pandas format
+    mev = mev.set_index('Date') #Set date as index. 
+    mev = mev.loc[(mev.index >= '1950-12-01')]
+    mev = mev.drop(columns = ['Risk-free rate','12-month moving sum of earnings'])
+    return mev
+
+def readTechnicalIndicatorData():
+    ta = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Technical indicators', 
+                        skiprows= range(1118,1119,1))[:-1]
+    ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
+    ta = ta.set_index('Date')
+    ta = ta.loc[(ta.index >= '1950-12-01')]
+    return ta

@@ -23,34 +23,15 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras import regularizers
-# from tensorflow.python.keras.layers import Input, Dense, Activation
-# from tensorflow.python.keras.models import Sequential
-from keras import losses 
 from keras import optimizers 
 from keras import metrics 
 from tqdm.notebook import tqdm
 # -
 
-#Read the equity premium series to a dataframe
-ep = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Equity premium', skiprows= range(1118,1127,1))[:-1]
-ep['Date'] = pd.to_datetime(ep['Date'], format='%Y%m')
-ep = ep.set_index('Date')
-ep = ep.loc[(ep.index >= '1950-12-01')]
-
-#Read the maacroeconomic variables to a dataframe
-mev = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Macroeconomic variables', 
-                    skiprows= range(1118,1126,1)).fillna(method='bfill')[:-1] #backward fill missing values. 
-mev = mev.loc[:, ~mev.columns.str.match('Unnamed')]  #Remove empty column
-mev['Date'] = pd.to_datetime(mev['Date'], format='%Y%m') #convert date pandas format
-mev = mev.set_index('Date') #Set date as index. 
-mev = mev.loc[(mev.index >= '1950-12-01')]
-mev = mev.drop(columns = ['Risk-free rate','12-month moving sum of earnings'])
-
-ta = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Technical indicators', 
-                    skiprows= range(1118,1119,1))[:-1]
-ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
-ta = ta.set_index('Date')
-ta = ta.loc[(ta.index >= '1950-12-01')]
+# Read in the relevant data for the analysis.
+ep = readEquityPremiumData()
+mev = readMacroEconomicVariableData()
+ta = readTechnicalIndicatorData()
 
 
 # ## Functions
@@ -133,6 +114,7 @@ def trainMLP(X_mev, y_mev, window_size, hidden):
 def modelTrainingSequence(X, y, window_size, hidden, dataset):
     performanceResults = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
+    # For each of the network specifications, try to find saved outputs. Otherwise train and evaluate model and save the outcomes. 
     for hidden in hidden_sizes:
         try: 
             results = pd.read_parquet('output/MLP_' + str(dataset) +'_' + str(hidden) +'.gzip')
@@ -174,7 +156,7 @@ X_ta = ta.iloc[:ta.shape[0]-1]
 
 resultsTA = modelTrainingSequence(normalizeData(X_ta), y_ta, window_size, hidden_sizes, dataset = 'TA')
 
-
+resultsTA
 
 
 

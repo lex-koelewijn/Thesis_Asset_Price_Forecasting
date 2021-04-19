@@ -24,7 +24,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
 from sklearn.decomposition import PCA
 from utils.dm_test import dm_test
-from utils.cw_test import clarkWestTest
+from utils.clarkWestTest import clarkWestTest
 from utils.utils import * 
 from tqdm.notebook import tqdm #This is not a functional neccesity, but improves the interface. 
 
@@ -33,26 +33,10 @@ pd.set_option('display.max_columns', None)
 # ## Reading Data
 # First we start with loading the relevant data from the excel to be used in our analyis
 
-#Read the equity premium series to a dataframe
-ep = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Equity premium', skiprows= range(1118,1127,1))[:-1]
-ep['Date'] = pd.to_datetime(ep['Date'], format='%Y%m')
-ep = ep.set_index('Date')
-ep = ep.loc[(ep.index >= '1950-12-01')]
-
-#Read the maacroeconomic variables to a dataframe
-mev = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Macroeconomic variables', 
-                    skiprows= range(1118,1126,1)).fillna(method='bfill')[:-1] #backward fill missing values. 
-mev = mev.loc[:, ~mev.columns.str.match('Unnamed')]  #Remove empty column
-mev['Date'] = pd.to_datetime(mev['Date'], format='%Y%m') #convert date pandas format
-mev = mev.set_index('Date') #Set date as index. 
-mev = mev.loc[(mev.index >= '1950-12-01')]
-mev = mev.drop(columns = ['Risk-free rate','12-month moving sum of earnings'])
-
-ta = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Technical indicators', 
-                    skiprows= range(1118,1119,1))[:-1]
-ta['Date'] = pd.to_datetime(ta['Date'], format='%Y%m')
-ta = ta.set_index('Date')
-ta = ta.loc[(ta.index >= '1950-12-01')]
+# Read in the relevant data for the analysis.
+ep = readEquityPremiumData()
+mev = readMacroEconomicVariableData()
+ta = readTechnicalIndicatorData()
 
 
 # # Random Forest
