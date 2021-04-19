@@ -46,6 +46,7 @@ mev = mev.loc[:, ~mev.columns.str.match('Unnamed')]  #Remove empty column
 mev['Date'] = pd.to_datetime(mev['Date'], format='%Y%m') #convert date pandas format
 mev = mev.set_index('Date') #Set date as index. 
 mev = mev.loc[(mev.index >= '1950-12-01')]
+mev = mev.drop(columns = ['Risk-free rate','12-month moving sum of earnings'])
 
 ta = pd.read_excel('data/Augemented_Formatted_results.xls', sheet_name='Technical indicators', 
                     skiprows= range(1118,1119,1))[:-1]
@@ -103,7 +104,6 @@ def trainRandomForest(X_mev, y_mev, window_size):
 
 
 def analyzeResults(results, resultsRF, method, dataset):
-    DM = dm_test(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
     CW = clarkWestTest(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
     resultsRF = resultsRF.append(pd.Series({
                 'Method': method,
@@ -184,7 +184,7 @@ try:
     results_mev_pca = pd.read_parquet('output/RF_MEV_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_mev_pca = trainRandomForest(X_mev_pca, y_pca, window_size)
+    results_mev_pca = trainRandomForest(X_mev_pca, y_mev, window_size)
     results_mev_pca.to_parquet('output/RF_MEV_PCA.gzip', compression='gzip')
 
 resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest', dataset = 'MEV PCA')
@@ -201,7 +201,7 @@ try:
     results_ta_pca = pd.read_parquet('output/RF_TA_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_ta_pca = trainRandomForest(X_ta_pca, y_pca, window_size)
+    results_ta_pca = trainRandomForest(X_ta_pca, y_ta, window_size)
     results_ta_pca.to_parquet('output/RF_TA_PCA.gzip', compression='gzip')
 
 resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'TA PCA')
