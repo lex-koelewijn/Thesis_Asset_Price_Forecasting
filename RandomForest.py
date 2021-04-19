@@ -208,11 +208,11 @@ resultsRF
 def runAnalysisPerVariable(X_raw, y_raw, window_size, dataset):
     # Initialize empty datafram to contain the results. 
     resultsDF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
+    
+    # Init y
+    y = y_raw.shift(periods=-1)[:y_raw.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 
     for variable in X_raw.columns:
-        # Init y
-        y = y_raw.shift(periods=-1)[:y_raw.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
-
         # Select current variable and reshape such that pandas and numpy understand each other. 
         X = X_raw.iloc[:X_raw.shape[0]-1][variable]
         X = pd.DataFrame(X.values.reshape(-1, 1))
