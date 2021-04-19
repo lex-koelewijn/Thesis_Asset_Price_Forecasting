@@ -58,3 +58,18 @@ def check_existence_directory(directories):
     for direc in directories:
         if not os.path.exists(direc):
             os.makedirs(direc)
+            
+def analyzeResults(results, resultsRF, method, dataset):
+    """
+    Calcutale the evaluation measures based on the results of a mdel and append them to a datafram provided. 
+    """
+    CW = clarkWestTest(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
+    resultsRF = resultsRF.append(pd.Series({
+                'Method': method,
+                'Dataset': dataset,
+                'R2': round(R2(results.Actual, results.Pred, results.HA) , 3),
+                'CW': significanceLevel(CW[0], CW[1]),
+                'DA': directionalAccuracy(results.Actual, results.Pred),
+                'DA HA': directionalAccuracy(results.Actual, results.HA)
+            }), ignore_index=True)
+    return resultsRF
