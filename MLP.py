@@ -16,8 +16,6 @@ import keras
 import tensorflow
 import pandas as pd
 import numpy as np
-from utils.utils import *
-from utils.clarkWestTest import clarkWestTest
 from keras.models import Sequential
 from keras.layers import Dense, Activation, BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
@@ -30,17 +28,22 @@ from numpy.random import seed
 # ## Google Collab Setup 
 # The following blocks of code should be used when running the code on Google Collab. (Meaning the local set up block should be commented) 
 
-# +
 import sys
-from google.colab import drive
+import os
 import tensorflow as tf
 from google.colab import files
-import os
+from google.colab import drive
 
+# +
 # Mount my google drive where the input files are stored. 
 drive.mount('/content/drive')
-sys.path.append('/content/drive/MyDrive/RUG/Master thesis finance/utils')
+sys.path.append('/content/drive/MyDrive/RUG/Master thesis finance/')
 
+#Import util files from Drive
+from utils.utils import *
+from utils.clarkWestTest import clarkWestTest
+
+# +
 # Load the GPU provided by google
 device_name = tf.test.gpu_device_name()
 if device_name != '/device:GPU:0':
@@ -51,7 +54,7 @@ print('Found GPU at: {}'.format(device_name))
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # Read the data from the drive location
-path_to_data = '/content/drive/MyDrive/RUG/Master thesis finance/data'
+path_to_data = '/content/drive/MyDrive/RUG/Master thesis finance/'
 # Read in the relevant data for the analysis.
 ep = readEquityPremiumData(path_to_data)
 mev = readMacroEconomicVariableData(path_to_data)
@@ -65,11 +68,14 @@ def downloadFiles(directory):
     Function which downloads all files in the directory specified in the Collab environment.   
     """
     for filename in os.listdir(directory):
-    files.download(directory+filename)
+        files.download(directory+filename)
 
 
 # ## Local Setup
-# The code block below should be used when running the repository on a local machine. (Meaning the Google collab block should be commented)
+# The code blocks below should be used when running the repository on a local machine. (Meaning the Google collab block should be commented)
+
+from utils.utils import *
+from utils.clarkWestTest import clarkWestTest
 
 ep = readEquityPremiumData()
 mev = readMacroEconomicVariableData()
