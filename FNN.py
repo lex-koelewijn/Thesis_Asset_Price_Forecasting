@@ -182,18 +182,18 @@ def trainFNN(X_mev, y_mev, window_size, hidden, inputUnits, inputShape):
     return results
 
 
-def modelTrainingSequence(X, y, window_size, hidden, dataset, inputUnits, inputShape):
+def modelTrainingSequence(X, y, window_size, hidden, architecture, dataset, inputUnits, inputShape):
     performanceResults = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
     # For each of the network specifications, try to find saved outputs. Otherwise train and evaluate model and save the outcomes. 
     for hidden in hidden_sizes:
         try: 
-            results = pd.read_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) +'.gzip')
+            results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip')
         except:
             print('No saved results found, running model estimation.')
             results = trainFNN(X, y, window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-            results.to_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) +'.gzip', compression='gzip')
-        performanceResults = analyzeResults(results, performanceResults, method = 'FNN '+str(hidden), dataset = dataset)
+            results.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip', compression='gzip')
+        performanceResults = analyzeResults(results, performanceResults, method = str(architecture)+' '+str(hidden), dataset = dataset)
     
     return performanceResults
     
@@ -209,7 +209,7 @@ check_existence_directory(['output'])
 y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_mev = mev.iloc[:mev.shape[0]-1]
 
-resultsMEVAll = modelTrainingSequence(normalizeData(X_mev), normalizeData(y_mev), window_size, hidden_sizes, dataset = 'MEV', inputUnits = 14, inputShape = (14,))
+resultsMEVAll = modelTrainingSequence(normalizeData(X_mev), normalizeData(y_mev), window_size, hidden_sizes, architecture = 'FNN', dataset = 'MEV', inputUnits = 14, inputShape = (14,))
 
 resultsMEVAll
 
@@ -225,7 +225,7 @@ check_existence_directory(['output'])
 y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_ta = ta.iloc[:ta.shape[0]-1]
 
-resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, hidden_sizes, dataset = 'TA', inputUnits = 14, inputShape = (14,))
+resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, hidden_sizes, architecture = 'FNN', dataset = 'TA', inputUnits = 14, inputShape = (14,))
 
 resultsTAAll
 
@@ -248,11 +248,11 @@ def runAnalysisPerVariable(X_raw, y_raw, hidden, window_size, dataset, inputUnit
         for hidden in hidden_sizes:
             # If model has been trained already we load input, otherwise train model. 
             try: 
-                results = pd.read_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable) + '.gzip')
+                results = pd.read_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip')
             except:
                 print('No saved results found, running model estimation.')
                 results = trainFNN(normalizeData(X), normalizeData(y), window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-                results.to_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable) + '.gzip', compression='gzip')
+                results.to_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip', compression='gzip')
                 
             #Analyze the results
             resultsDF = analyzeResults(results, resultsDF, method = 'FNN '+str(hidden), dataset =   dataset + ': ' + str(variable))
