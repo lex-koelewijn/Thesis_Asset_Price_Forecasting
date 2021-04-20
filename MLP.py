@@ -71,6 +71,13 @@ def downloadFiles(directory):
         files.download(directory+filename)
 
 
+def copyFilesToDrive():
+    """
+    Function which copies all the output files to my personal drive. Fully hardcoded.   
+    """
+#     !cp -r 'output/' '/content/drive/MyDrive/RUG/Master thesis finance/'
+
+
 # ## Local Setup
 # The code blocks below should be used when running the repository on a local machine. (Meaning the Google collab block should be commented)
 
@@ -170,18 +177,18 @@ def trainMLP(X_mev, y_mev, window_size, hidden, inputUnits, inputShape):
     return results
 
 
-def modelTrainingSequence(X, y, window_size, hidden, dataset, inputUnits, inputShape):
+def modelTrainingSequence(X, y, window_size, hidden, architecture, dataset, inputUnits, inputShape):
     performanceResults = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
     # For each of the network specifications, try to find saved outputs. Otherwise train and evaluate model and save the outcomes. 
     for hidden in hidden_sizes:
         try: 
-            results = pd.read_parquet('output/MLP_' + str(dataset) +'_' + str(hidden) +'.gzip')
+            results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip')
         except:
             print('No saved results found, running model estimation.')
-            results = trainMLP(X, y, window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-            results.to_parquet('output/MLP_' + str(dataset) +'_' + str(hidden) +'.gzip', compression='gzip')
-        performanceResults = analyzeResults(results, performanceResults, method = 'MLP '+str(hidden), dataset = dataset)
+            results = trainLSTM(X, y, window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
+            results.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip', compression='gzip')
+        performanceResults = analyzeResults(results, performanceResults, method = str(architecture)+' '+str(hidden), dataset = dataset)
     
     return performanceResults
     
@@ -197,7 +204,7 @@ check_existence_directory(['output'])
 y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_mev = mev.iloc[:mev.shape[0]-1]
 
-resultsMEVAll = modelTrainingSequence(normalizeData(X_mev), normalizeData(y_mev), window_size, hidden_sizes, dataset = 'MEV', inputUnits = 14, inputShape = (14,))
+resultsMEVAll = modelTrainingSequence(normalizeData(X_mev), normalizeData(y_mev), window_size, hidden_sizes, architecture = 'MLP', dataset = 'MEV', inputUnits = 14, inputShape = (14,))
 
 resultsMEVAll
 
@@ -213,7 +220,7 @@ check_existence_directory(['output'])
 y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_ta = ta.iloc[:ta.shape[0]-1]
 
-resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, hidden_sizes, dataset = 'TA', inputUnits = 14, inputShape = (14,))
+resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, hidden_sizes, architecture = 'MLP', dataset = 'TA', inputUnits = 14, inputShape = (14,))
 
 resultsTAAll
 
