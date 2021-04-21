@@ -71,6 +71,13 @@ def downloadFiles(directory):
         files.download(directory+filename)
 
 
+def copyFilesToDrive():
+    """
+    Function which copies all the output files to my personal drive. Fully hardcoded.   
+    """
+#     !cp -r 'output/' '/content/drive/MyDrive/RUG/Master thesis finance/'
+
+
 # ## Local Setup
 # The code blocks below should be used when running the repository on a local machine. (Meaning the Google collab block should be commented)
 
@@ -188,11 +195,11 @@ def modelTrainingSequence(X, y, window_size, hidden, architecture, dataset, inpu
     # For each of the network specifications, try to find saved outputs. Otherwise train and evaluate model and save the outcomes. 
     for hidden in hidden_sizes:
         try: 
-            results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip')
+            results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_') +'.gzip')
         except:
             print('No saved results found, running model estimation.')
             results = trainFNN(X, y, window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-            results.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden) +'.gzip', compression='gzip')
+            results.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_') +'.gzip', compression='gzip')
         performanceResults = analyzeResults(results, performanceResults, method = str(architecture)+' '+str(hidden), dataset = dataset)
     
     return performanceResults
@@ -211,13 +218,14 @@ X_mev = mev.iloc[:mev.shape[0]-1]
 
 resultsMEVAll = modelTrainingSequence(normalizeData(X_mev), normalizeData(y_mev), window_size, hidden_sizes, architecture = 'FNN', dataset = 'MEV', inputUnits = 14, inputShape = (14,))
 
+copyFilesToDrive()
 resultsMEVAll
 
 # ### FNN TA
 # Run the FNN for all the macroeconomic at once as training input. 
 
 window_size = 180
-hidden_sizes = [32, 16, 8, 4, 2] 
+hidden_sizes = [[32], [32, 16], [32, 16, 8], [32, 16, 8, 4], [32, 16, 8, 4, 2]] 
 check_existence_directory(['output'])
 
 #Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
@@ -227,13 +235,15 @@ X_ta = ta.iloc[:ta.shape[0]-1]
 
 resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, hidden_sizes, architecture = 'FNN', dataset = 'TA', inputUnits = 14, inputShape = (14,))
 
+copyFilesToDrive()
 resultsTAAll
 
 
 # # Analysis per Variable
 # Up till now we have trained models using a vector of all variables at each time point. In the analysis below models will be trained for each variable seperately with the same set up as above. This allows us to observe the predictive power of variables indivdually given the current model architecucture.
 
-def runAnalysisPerVariable(X_raw, y_raw, hidden, window_size, dataset, inputUnits, inputShape):
+# +
+def runAnalysisPerVariable(X_raw, y_raw, hidden,  window_size, architecture, dataset, inputUnits, inputShape):
     # Initialize empty datafram to contain the results. 
     resultsDF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
@@ -248,28 +258,31 @@ def runAnalysisPerVariable(X_raw, y_raw, hidden, window_size, dataset, inputUnit
         for hidden in hidden_sizes:
             # If model has been trained already we load input, otherwise train model. 
             try: 
-                results = pd.read_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip')
+                results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_') + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip')
             except:
                 print('No saved results found, running model estimation.')
                 results = trainFNN(normalizeData(X), normalizeData(y), window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-                results.to_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip', compression='gzip')
+                results.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_') + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip', compression='gzip')
+                copyFilesToDrive()
                 
             #Analyze the results
-            resultsDF = analyzeResults(results, resultsDF, method = 'FNN '+str(hidden), dataset =   dataset + ': ' + str(variable))
+            resultsDF = analyzeResults(results, resultsDF, method = architecture+str(hidden), dataset =   dataset + ': ' + str(variable))
+            
             
     return resultsDF
     
-
+    
+# -
 
 # ### Macroeconomic variables
 
-resultsMEV = runAnalysisPerVariable(mev, ep, hidden_sizes,  window_size, dataset = 'MEV', inputUnits = 1, inputShape = (1,))
+resultsMEV = runAnalysisPerVariable(mev, ep, hidden_sizes,  window_size, architecture = 'FNN', dataset = 'MEV', inputUnits = 1, inputShape = (1,))
 
 resultsMEV
 
 # ### Technical Indicators
 
-resultsTA = runAnalysisPerVariable(ta, ep, hidden_sizes,  window_size, dataset = 'TA', inputUnits = 1, inputShape = (1,))
+resultsTA = runAnalysisPerVariable(ta, ep, hidden_sizes,  window_size, architecture = 'FNN', dataset = 'TA', inputUnits = 1, inputShape = (1,))
 
 resultsTA
 
@@ -279,6 +292,6 @@ with pd.ExcelWriter('output/FNN.xlsx') as writer:
     resultsMEV.to_excel(writer, sheet_name='MEV Variables')
     resultsTA.to_excel(writer, sheet_name='TA Variables')
 
-
+copyFilesToDrive()
 
 
