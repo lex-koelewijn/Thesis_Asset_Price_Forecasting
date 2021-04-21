@@ -68,6 +68,13 @@ from numpy.random import seed
 #     """
 #     for filename in os.listdir(directory):
 #         files.download(directory+filename)
+
+# +
+# def copyFilesToDrive():
+#     """
+#     Function which copies all the output files to my personal drive. Fully hardcoded.   
+#     """
+# #     !cp -r 'output/' '/content/drive/MyDrive/RUG/Master thesis finance/'
 # -
 
 # ## Local Setup
