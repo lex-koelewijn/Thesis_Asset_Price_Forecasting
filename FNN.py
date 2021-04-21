@@ -266,7 +266,7 @@ def runAnalysisPerVariable(X_raw, y_raw, hidden,  window_size, architecture, dat
                 copyFilesToDrive()
                 
             #Analyze the results
-            resultsDF = analyzeResults(results, resultsDF, method = architecture+str(hidden), dataset =   dataset + ': ' + str(variable))
+            resultsDF = analyzeResults(results, resultsDF, method = architecture+' '+str(hidden), dataset =   dataset + ': ' + str(variable))
             
             
     return resultsDF
