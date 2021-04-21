@@ -114,22 +114,23 @@ def analyzeResults(results, resultsRF, method, dataset):
     return resultsRF
 
 
-# +
 def createModel(X, y, inputUnits, inputShape):
     """
     Define the model in keras. 
     """
     model = Sequential()
     
-#     # Input layer
+    # Input layer
     model.add(Dense(inputUnits, input_shape=inputShape, 
                     activation='relu', 
                     activity_regularizer=regularizers.l1(0.01)))
     
+    #Convolutional and max polling layers. 
     model.add(Conv1D(filters=64, kernel_size=4, activation='relu', input_shape=inputShape))
     model.add(Conv1D(filters=32, kernel_size=2, activation='relu', input_shape=inputShape))
     model.add(MaxPooling1D(pool_size=2))
-
+    
+    #Flatten and fully connected output layer
     model.add(Flatten())  
     model.add(Dense(25, activation='relu'))
     
@@ -137,12 +138,13 @@ def createModel(X, y, inputUnits, inputShape):
     model.add(Dense(1, activation='linear'))
     
     model.compile(optimizer = 'sgd', loss = 'mean_squared_error', metrics = ['mean_squared_error'])
+    
+    print(model.summary())
+    
     early_stopping = EarlyStopping(monitor='val_loss', patience = 5, min_delta=0.001, mode = 'min')
     model.fit(X, y, epochs=100, batch_size=128, validation_split = 0.2, callbacks=[early_stopping], verbose=0)
     return model
 
-
-# -
 
 def trainCNN(X_mev, y_mev, window_size, inputUnits, inputShape):
     results = pd.DataFrame(columns=['Date_t1', 'Actual', 'Pred', 'HA']) 
@@ -157,7 +159,6 @@ def trainCNN(X_mev, y_mev, window_size, inputUnits, inputShape):
         y_t1 = y.tail(1)
         X = X[:X.shape[0]-1]
         y = y.iloc[:y.shape[0]-1]
-        
         
          # Define and train the model in keras once every year
         if(i % 12 == 0):
@@ -179,20 +180,19 @@ def trainCNN(X_mev, y_mev, window_size, inputUnits, inputShape):
     return results
 
 
-def modelTrainingSequence(X, y, window_size, dataset, inputUnits, inputShape):
+def modelTrainingSequence(X, y, window_size, architecture, dataset, inputUnits, inputShape):
     performanceResults = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
     # For each of the network specifications, try to find saved outputs. Otherwise train and evaluate model and save the outcomes. 
     try: 
-        results = pd.read_parquet('output/CNN_' + str(dataset)+'.gzip')
+        results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset)+'.gzip')
     except:
         print('No saved results found, running model estimation.')
         results = trainCNN(X, y, window_size = window_size, inputUnits = inputUnits, inputShape = inputShape)
-        results.to_parquet('output/CNN_' + str(dataset)+'.gzip', compression='gzip')
-    performanceResults = analyzeResults(results, performanceResults, method = 'CNN ', dataset = dataset)
+        results.to_parquet('output/' + str(architecture) + '_' + str(dataset)+'.gzip', compression='gzip')
+    performanceResults = analyzeResults(results, performanceResults, method = str(architecture)+' ', dataset = dataset)
 
-    return performanceResults
-    
+    return performanceResults 
 
 
 # ### CNN MEV
@@ -203,14 +203,15 @@ check_existence_directory(['output'])
 
 y_mev = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_mev = mev.iloc[:mev.shape[0]-1]
+# Reshape data such that CNN layers of keras can handle the input.
 X_mev = normalizeData(X_mev).values.reshape(X_mev.shape[0], X_mev.shape[1], 1)
-resultsMEVAll = modelTrainingSequence(X_mev, normalizeData(y_mev), window_size, dataset = 'MEV', inputUnits = 14, inputShape = (14,1))
+resultsMEVAll = modelTrainingSequence(X_mev, normalizeData(y_mev), window_size, architecture = 'CNN', dataset = 'MEV', inputUnits = 14, inputShape = (14,1))
 
 resultsMEVAll
 
-resultsMEVAll
 
-resultsMEVAll
+
+
 
 
 
@@ -222,15 +223,16 @@ resultsMEVAll
 # Run the CNN for all the macroeconomic at once as training input. 
 
 window_size = 180
-hidden_sizes = [32, 16, 8, 4, 2] 
 check_existence_directory(['output'])
 
 #Shift y variable by 1 month to the future and remove the last observation of the independent variables. Now X and y line up such that each row in X is at time t
 # and each row in y with the same index is t+1.
 y_ta = ep.shift(periods=-1)[:ep.shape[0]-1].reset_index(drop=True)['Log equity premium'].astype('float64')
 X_ta = ta.iloc[:ta.shape[0]-1]
+# Reshape data such that CNN layers of keras can handle the input.
+X_ta = normalizeData(X_ta).values.reshape(X_ta.shape[0], X_ta.shape[1], 1)
 
-resultsTAAll = modelTrainingSequence(normalizeData(X_ta), normalizeData(y_ta), window_size, dataset = 'TA', inputUnits = 14, inputShape = (14,))
+resultsTAAll = modelTrainingSequence(X_ta, normalizeData(y_ta), window_size, architecture = 'CNN', dataset = 'TA', inputUnits = 14, inputShape = (14,1))
 
 resultsTAAll
 
@@ -238,7 +240,70 @@ resultsTAAll
 # # Analysis per Variable
 # Up till now we have trained models using a vector of all variables at each time point. In the analysis below models will be trained for each variable seperately with the same set up as above. This allows us to observe the predictive power of variables indivdually given the current model architecucture.
 
-def runAnalysisPerVariable(X_raw, y_raw, hidden, window_size, dataset, inputUnits, inputShape):
+def createModelPerVariable(X, y, inputUnits, inputShape):
+    """
+    Define the model in keras. 
+    """
+    model = Sequential()
+    
+    # Input layer
+    model.add(Dense(inputUnits, input_shape=inputShape, 
+                    activation='relu', 
+                    activity_regularizer=regularizers.l1(0.01)))
+    
+    #Convolutional and max polling layers. 
+    model.add(Conv1D(filters=64, kernel_size=1, activation='relu', input_shape=inputShape))
+    model.add(Conv1D(filters=32, kernel_size=1, activation='relu'))
+    model.add(MaxPooling1D(pool_size=1))
+    
+    #Flatten and fully connected output layer
+    model.add(Flatten())  
+    model.add(Dense(25, activation='relu'))
+    
+    #Output layer
+    model.add(Dense(1, activation='linear'))
+    
+    model.compile(optimizer = 'sgd', loss = 'mean_squared_error', metrics = ['mean_squared_error'])
+    early_stopping = EarlyStopping(monitor='val_loss', patience = 5, min_delta=0.001, mode = 'min')
+    model.fit(X, y, epochs=100, batch_size=128, validation_split = 0.2, callbacks=[early_stopping], verbose=0)
+    return model
+
+
+def trainCNNPerVariable(X_mev, y_mev, window_size, inputUnits, inputShape):
+    results = pd.DataFrame(columns=['Date_t1', 'Actual', 'Pred', 'HA']) 
+    
+    for i in tqdm(range(0, X_mev.shape[0]-window_size)):
+        #Slice the 180 month rolling window to train the model
+        X = X_mev[i:(window_size + i):]
+        y = y_mev[i:(window_size + i):]
+
+        #Get the X and y datapoint at time t (the most recent one) and seperate from the training set. 
+        X_t = X[X.shape[0]-1,:].reshape(1,X.shape[1],1)
+        y_t1 = y.tail(1)
+        X = X[:X.shape[0]-1]
+        y = y.iloc[:y.shape[0]-1]
+        
+         # Define and train the model in keras once every year
+        if(i % 12 == 0):
+            model = createModelPerVariable(X, y, inputUnits, inputShape)
+
+        #Make a 1 month OOS prediction of the current time point t.
+        y_pred = model.predict(X_t)
+
+        #Calculate the historical average based on all returns in the current window
+        HA = y.mean()
+
+        results = results.append(pd.Series({
+            'Date_t1': ep.index[window_size+i],
+            'Actual': y_t1.values.astype('float64')[0],
+            'Pred': y_pred[0][0],
+            'HA': HA
+        }), ignore_index=True)
+        
+    return results
+
+
+def runAnalysisPerVariable(X_raw, y_raw, window_size, architecture, dataset, inputUnits, inputShape):
     # Initialize empty datafram to contain the results. 
     resultsDF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
     
@@ -250,31 +315,32 @@ def runAnalysisPerVariable(X_raw, y_raw, hidden, window_size, dataset, inputUnit
         X = X_raw.iloc[:X_raw.shape[0]-1][variable]
         X = pd.DataFrame(X.values.reshape(-1, 1))
         
-        for hidden in hidden_sizes:
-            # If model has been trained already we load input, otherwise train model. 
-            try: 
-                results = pd.read_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip')
-            except:
-                print('No saved results found, running model estimation.')
-                results = trainFNN(normalizeData(X), normalizeData(y), window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-                results.to_parquet('output/FNN_' + str(dataset) +'_' + str(hidden) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip', compression='gzip')
-                
-            #Analyze the results
-            resultsDF = analyzeResults(results, resultsDF, method = 'FNN '+str(hidden), dataset =   dataset + ': ' + str(variable))
+        # Reshape data such that CNN layers of keras can handle the input.
+        X = normalizeData(X).values.reshape(X.shape[0], X.shape[1], 1)
+
+        # If model has been trained already we load input, otherwise train model. 
+        try: 
+            results = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(variable).replace(' ', '').replace('%', '') + '.gzip')
+        except:
+            print('No saved results found, running model estimation.')
+            results = trainCNNPerVariable(X, normalizeData(y), window_size = window_size, inputUnits = inputUnits, inputShape = inputShape)
+            results.to_parquet('output/' + str(architecture) + '_' + str(dataset) + '_' + str(variable).replace(' ', '').replace('%', '') + '.gzip', compression='gzip')
+
+        #Analyze the results
+        resultsDF = analyzeResults(results, resultsDF, method = architecture, dataset =   dataset + ': ' + str(variable))
             
-    return resultsDF
-    
+    return resultsDF 
 
 
 # ### Macroeconomic variables
 
-resultsMEV = runAnalysisPerVariable(mev, ep, hidden_sizes,  window_size, dataset = 'MEV', inputUnits = 1, inputShape = (1,))
+resultsMEV = runAnalysisPerVariable(mev, ep, window_size, architecture = 'CNN', dataset = 'MEV', inputUnits = 1, inputShape = (1,1))
 
 resultsMEV
 
 # ### Technical Indicators
 
-resultsTA = runAnalysisPerVariable(ta, ep, hidden_sizes,  window_size, dataset = 'TA', inputUnits = 1, inputShape = (1,))
+resultsTA = runAnalysisPerVariable(ta, ep, window_size, architecture = 'CNN',  dataset = 'TA', inputUnits = 1, inputShape = (1,1))
 
 resultsTA
 
