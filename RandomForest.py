@@ -162,7 +162,7 @@ resultsRF = analyzeResults(results_all, resultsRF, method = 'Random Forest', dat
 # # Principal Components Analysis
 # ### Macro Economic Variables
 
-pca = PCA(n_components=3, svd_solver='full')
+pca = PCA(n_components=0.95, svd_solver='full')
 X_mev_pca = normalizeData(X_mev)
 X_mev_pca = pd.DataFrame(pca.fit_transform(X_mev_pca))
 y_mev_pca = normalizeData(y_mev)
@@ -179,7 +179,7 @@ resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest',
 
 # ### PCA Technical Indicators
 
-pca = PCA(n_components=3, svd_solver='full')
+pca = PCA(n_components=0.95, svd_solver='full')
 X_ta_pca = normalizeData(X_ta)
 X_ta_pca = pd.DataFrame(pca.fit_transform(X_ta_pca))
 y_ta_pca = normalizeData(y_ta)
@@ -196,7 +196,7 @@ resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', 
 
 # ### PCA ALL 
 
-pca = PCA(n_components=3, svd_solver='full')
+pca = PCA(n_components=0.95, svd_solver='full')
 X_all = pd.concat([X_mev,X_ta], ignore_index = False, axis =1)
 X_all = normalizeData(X_all)
 X_all_pca = pd.DataFrame(pca.fit_transform(X_all))
