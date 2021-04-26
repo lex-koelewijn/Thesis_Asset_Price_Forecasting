@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from . clarkWestTest import clarkWestTest
 
 def createRollingWindow(dataset, look_back = 1):
     """
@@ -70,7 +71,10 @@ def analyzeResults(results, resultsRF, method, dataset):
                 'R2': round(R2(results.Actual, results.Pred, results.HA) , 3),
                 'CW': significanceLevel(CW[0], CW[1]),
                 'DA': directionalAccuracy(results.Actual, results.Pred),
-                'DA HA': directionalAccuracy(results.Actual, results.HA)
+                'DA HA': directionalAccuracy(results.Actual, results.HA),
+                'MSFE': MSFE(results.Actual, results.Pred),
+                'MSFE HA': MSFE(results.Actual, results.HA)
+        
             }), ignore_index=True)
     return resultsRF
 
@@ -102,7 +106,7 @@ def readTechnicalIndicatorData(path = ''):
     return ta
 
 def MSFE(actual, pred):
-    return( np.mean((actual-pred)**2))
+    return(round(np.mean((actual-pred)**2),2))
 
 def normalizeData(X):
     return (X-np.mean(X))/np.std(X)

@@ -20,6 +20,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, BatchNormalization, Conv1D, Conv2D, Flatten, MaxPooling1D 
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras import regularizers
+from sklearn.decomposition import PCA
+from pandas.testing import assert_series_equal
 from keras import optimizers 
 from keras import metrics 
 from tqdm.notebook import tqdm
@@ -101,26 +103,6 @@ except:
 
 # ## Functions
 
-def normalizeData(X):
-    return (X-np.mean(X))/np.std(X)
-
-
-def analyzeResults(results, resultsRF, method, dataset):
-    """
-    Calcutale the evaluation measures based on the results of a mdel and append them to a datafram provided. 
-    """
-    CW = clarkWestTest(results['Actual'].astype(float), results['HA'].astype(float), results['Pred'].astype(float))
-    resultsRF = resultsRF.append(pd.Series({
-                'Method': method,
-                'Dataset': dataset,
-                'R2': round(R2(results.Actual, results.Pred, results.HA) , 3),
-                'CW': significanceLevel(CW[0], CW[1]),
-                'DA': directionalAccuracy(results.Actual, results.Pred),
-                'DA HA': directionalAccuracy(results.Actual, results.HA)
-            }), ignore_index=True)
-    return resultsRF
-
-
 def createModel(X, y, inputUnits, inputShape):
     """
     Define the model in keras. 
@@ -144,12 +126,12 @@ def createModel(X, y, inputUnits, inputShape):
     #Output layer
     model.add(Dense(1, activation='linear'))
     
-    model.compile(optimizer = 'sgd', loss = 'mean_squared_error', metrics = ['mean_squared_error'])
+    model.compile(optimizer = 'ADAM', loss = 'mean_squared_error', metrics = ['mean_squared_error'])
     
     print(model.summary())
     
     early_stopping = EarlyStopping(monitor='val_loss', patience = 5, min_delta=0.001, mode = 'min')
-    model.fit(X, y, epochs=100, batch_size=128, validation_split = 0.2, callbacks=[early_stopping], verbose=0)
+    model.fit(X, y, epochs=100, batch_size=8, validation_split = 0.2, callbacks=[early_stopping], verbose=0)
     return model
 
 
@@ -216,16 +198,6 @@ resultsMEVAll = modelTrainingSequence(X_mev, normalizeData(y_mev), window_size, 
 
 resultsMEVAll
 
-
-
-
-
-
-
-
-
-
-
 # ### CNN TA
 # Run the CNN for all the macroeconomic at once as training input. 
 
@@ -242,6 +214,48 @@ X_ta = normalizeData(X_ta).values.reshape(X_ta.shape[0], X_ta.shape[1], 1)
 resultsTAAll = modelTrainingSequence(X_ta, normalizeData(y_ta), window_size, architecture = 'CNN', dataset = 'TA', inputUnits = 14, inputShape = (14,1))
 
 resultsTAAll
+
+# ### CNN ALL
+# Run the CNN for all the macroeconomic variables and techical indicators at once. 
+
+assert_series_equal(y_ta, y_mev)
+y_all = y_ta
+X_all = pd.concat([X_mev, X_ta], ignore_index = False, axis =1)
+resultsAll = modelTrainingSequence(normalizeData(X_all), normalizeData(y_all), window_size, hidden_sizes, architecture = 'CNN', dataset = 'ALL', inputUnits = 28, inputShape = (28,1))
+
+resultsAll
+
+
+# # Principal Components Analysis
+
+def trainPCAModel(X, y, explainedVariance, hidden, architecture, dataset):
+    performanceResults = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW', 'DA', 'DA HA', 'MSFE', 'MSFE HA']) 
+    
+    # Let the PCA analysis determine the optimal number of components such that >95% of the variance is explained. 
+    pca = PCA(n_components=0.95, svd_solver='full')
+    X = pd.DataFrame(pca.fit_transform(normalizeData(X)))
+    y = normalizeData(y)
+    
+    #Extract the input sizes from the PCA transformed dataset. 
+    inputUnits = X.shape[1]
+    inputShape = (X.shape[1],1)
+    
+
+    try: 
+        results_pca = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) + '_PCA' +'.gzip')
+    except:
+        print('No saved results found, running model estimation.')
+          results_pca = trainCNN(X, y, window_size = window_size, inputUnits = inputUnits, inputShape = inputShape)
+          results_pca.to_parquet('output/' + str(architecture) + '_' + str(dataset) + '_PCA' +'.gzip', compression='gzip')
+    performanceResults = analyzeResults(results_pca, performanceResults, method = str(architecture)+' PCA '+str(hidden), dataset = dataset)
+                                   
+    return performanceResults                                
+
+
+resultsMEVPCA = trainPCAModel(X_mev, y_mev, window_size, architecture = 'CNN', dataset = 'MEV')
+resultsTAPCA = trainPCAModel(X_ta, y_ta, window_size, architecture = 'CNN', dataset = 'TA')
+resultsALLPCA = trainPCAModel(X_all, y_all, window_size, architecture = 'CNN', dataset = 'ALL')
+resultsPCACombined = pd.concat([resultsMEVPCA, resultsTAPCA, resultsALLPCA])
 
 
 # # Analysis per Variable
@@ -354,6 +368,8 @@ resultsTA
 with pd.ExcelWriter('output/CNN.xlsx') as writer:
     resultsMEVAll.to_excel(writer, sheet_name='Accuracy MEV')
     resultsTAAll.to_excel(writer, sheet_name='Accuracy TA')
+    resultsAll.to_excel(writer, sheet_name='Accuracy All')
+    resultsPCACombined.to_excel(writer, sheet_name='Accuracy PCA')
     resultsMEV.to_excel(writer, sheet_name='MEV Variables')
     resultsTA.to_excel(writer, sheet_name='TA Variables')
 
