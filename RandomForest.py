@@ -100,6 +100,10 @@ def analyzeResults(results, resultsRF, method, dataset):
     return resultsRF
 
 
+def normalizeData(X):
+    return (X-np.mean(X))/np.std(X)
+
+
 window_size = 180
 resultsRF = pd.DataFrame(columns=['Method', 'Dataset', 'R2', 'CW']) 
 check_existence_directory(['output'])
@@ -159,36 +163,56 @@ resultsRF = analyzeResults(results_all, resultsRF, method = 'Random Forest', dat
 # ### Macro Economic Variables
 
 pca = PCA(n_components=3, svd_solver='full')
-scalerX = StandardScaler()
-X_mev_pca = scalerX.fit_transform(X_mev, y_mev)
+X_mev_pca = normalizeData(X_mev)
 X_mev_pca = pd.DataFrame(pca.fit_transform(X_mev_pca))
+y_mev_pca = normalizeData(y_mev)
 
 # Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_mev_pca = pd.read_parquet('output/RF_MEV_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_mev_pca = trainRandomForest(X_mev_pca, y_mev, window_size)
+    results_mev_pca = trainRandomForest(X_mev_pca, y_mev_pca, window_size)
     results_mev_pca.to_parquet('output/RF_MEV_PCA.gzip', compression='gzip')
 
-resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest', dataset = 'MEV PCA')
+resultsRF = analyzeResults(results_mev_pca, resultsRF, method = 'Random Forest', dataset = 'PCA MEV')
 
-# ### Technical Indicators
+# ### PCA Technical Indicators
 
 pca = PCA(n_components=3, svd_solver='full')
-scalerX = StandardScaler()
-X_ta_pca = scalerX.fit_transform(X_ta, y_ta)
+X_ta_pca = normalizeData(X_ta)
 X_ta_pca = pd.DataFrame(pca.fit_transform(X_ta_pca))
+y_ta_pca = normalizeData(y_ta)
 
 # Check if we have the stored results available. If not then we train the model and save the results.
 try: 
     results_ta_pca = pd.read_parquet('output/RF_TA_PCA.gzip')
 except:
     print('No saved results found, running model estimation.')
-    results_ta_pca = trainRandomForest(X_ta_pca, y_ta, window_size)
+    results_ta_pca = trainRandomForest(X_ta_pca, y_ta_pca, window_size)
     results_ta_pca.to_parquet('output/RF_TA_PCA.gzip', compression='gzip')
 
-resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'TA PCA')
+resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'PCA TA')
+
+# ### PCA ALL 
+
+pca = PCA(n_components=3, svd_solver='full')
+X_all = pd.concat([X_mev,X_ta], ignore_index = False, axis =1)
+X_all = normalizeData(X_all)
+X_all_pca = pd.DataFrame(pca.fit_transform(X_all))
+y_all_pca = y_mev
+
+# Check if we have the stored results available. If not then we train the model and save the results.
+try: 
+    results_ta_pca = pd.read_parquet('output/RF_ALL_PCA.gzip')
+except:
+    print('No saved results found, running model estimation.')
+    results_ta_pca = trainRandomForest(X_all_pca, y_all_pca, window_size)
+    results_ta_pca.to_parquet('output/RF_ALL_PCA.gzip', compression='gzip')
+
+resultsRF = analyzeResults(results_ta_pca, resultsRF, method = 'Random Forest', dataset = 'PCA ALL')
+
+
 
 # ## Output
 # In the result below the follow elements can be found:
