@@ -100,3 +100,9 @@ def readTechnicalIndicatorData(path = ''):
     ta = ta.set_index('Date')
     ta = ta.loc[(ta.index >= '1950-12-01')]
     return ta
+
+def MSFE(actual, pred):
+    return( np.mean((actual-pred)**2))
+
+def normalizeData(X):
+    return (X-np.mean(X))/np.std(X)
