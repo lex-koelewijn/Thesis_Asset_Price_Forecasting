@@ -33,7 +33,7 @@ def R2(actual, predicted, average):
     """
     SSR = sum((actual-predicted)**2)
     SST = sum((actual-average)**2)
-    return (1- SSR/SST)
+    return (1- SSR/SST)*100
 
 
 def significanceLevel(stat, pVal):

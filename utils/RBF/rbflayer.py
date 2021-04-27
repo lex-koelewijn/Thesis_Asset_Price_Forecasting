@@ -1,3 +1,5 @@
+### Code was obtained here: https://github.com/PetraVidnerova/rbf_keras/
+
 from keras import backend as K
 from keras.engine.topology import Layer
 from keras.initializers import RandomUniform, Initializer, Constant
