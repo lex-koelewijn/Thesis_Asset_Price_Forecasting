@@ -245,11 +245,12 @@ def trainPCAModel(X, y, explainedVariance, hidden, architecture, dataset):
     
     for hidden in hidden_sizes:
         try: 
-            results_pca = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden)+ '_PCA' +'.gzip')
+            results_pca = pd.read_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_')+ '_PCA' +'.gzip')
         except:
             print('No saved results found, running model estimation.')
             results_pca = trainFNN(X, y, window_size = window_size, hidden = hidden, inputUnits = inputUnits, inputShape = inputShape)
-            results_pca.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden)+ '_PCA' +'.gzip', compression='gzip')
+            results_pca.to_parquet('output/' + str(architecture) + '_' + str(dataset) +'_' + str(hidden).replace('[', '').replace(']', '').replace(', ', '_')+ '_PCA' +'.gzip', compression='gzip')
+            copyFilesToDrive()
         performanceResults = analyzeResults(results_pca, performanceResults, method = str(architecture)+' PCA '+str(hidden), dataset = dataset)
                                    
     return performanceResults                                
